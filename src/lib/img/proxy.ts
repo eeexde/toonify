@@ -1,0 +1,75 @@
+import { MOCK_TITLES } from "../source/mock/fixtures";
+import type { AtHome } from "../source/mangadex";
+import { userAgent } from "../source/http";
+import { isAllowedImageHost, type ImgTarget } from "./paths";
+import { mockSvg } from "./mock-svg";
+
+const IMMUTABLE = "public, max-age=31536000, immutable";
+const UPLOADS = "https://uploads.mangadex.org";
+
+interface Deps {
+  atHome: (chapterId: string, refresh: boolean) => Promise<AtHome>;
+  fetch?: typeof fetch;
+  mockEnabled: boolean;
+}
+
+const notFound = () => new Response("Not found", { status: 404 });
+
+async function tryFetch(url: string, doFetch: typeof fetch): Promise<Response | null> {
+  if (!isAllowedImageHost(url)) return null;
+  try {
+    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(15_000) });
+    return res.ok && res.body ? res : null;
+  } catch {
+    return null;
+  }
+}
+
+function pass(res: Response): Response {
+  return new Response(res.body, {
+    status: 200,
+    headers: { "Content-Type": res.headers.get("Content-Type") ?? "image/jpeg", "Cache-Control": IMMUTABLE },
+  });
+}
+
+function svg(body: string): Response {
+  return new Response(body, { headers: { "Content-Type": "image/svg+xml", "Cache-Control": IMMUTABLE } });
+}
+
+export async function proxyImage(t: ImgTarget, deps: Deps): Promise<Response> {
+  const doFetch = deps.fetch ?? fetch;
+
+  if (t.kind === "mock-cover" || t.kind === "mock-page") {
+    if (!deps.mockEnabled) return notFound();
+    const m = MOCK_TITLES.find((x) => x.slug === t.slug);
+    if (!m) return notFound();
+    return t.kind === "mock-cover"
+      ? svg(mockSvg(m.title, m.hue, 1200))
+      : svg(mockSvg(`${m.title} · Ch ${t.chapter} · p${t.n}`, (m.hue + t.n * 25) % 360, 1400));
+  }
+
+  if (t.kind === "cover") {
+    const res = await tryFetch(`${UPLOADS}/covers/${t.mangaId}/${t.file}`, doFetch);
+    return res ? pass(res) : notFound();
+  }
+
+  let ah: AtHome;
+  try {
+    ah = await deps.atHome(t.chapterId, false);
+  } catch {
+    return new Response("Source unavailable", { status: 502 });
+  }
+  if (!ah.files.includes(t.file)) return notFound();
+
+  let res = await tryFetch(`${ah.baseUrl}/data/${ah.hash}/${t.file}`, doFetch);
+  if (!res) {
+    try {
+      const fresh = await deps.atHome(t.chapterId, true);
+      res = await tryFetch(`${fresh.baseUrl}/data/${fresh.hash}/${t.file}`, doFetch);
+    } catch {
+      res = null;
+    }
+  }
+  if (!res) res = await tryFetch(`${UPLOADS}/data/${ah.hash}/${t.file}`, doFetch);
+  return res ? pass(res) : new Response("Image unavailable", { status: 502 });
+}
