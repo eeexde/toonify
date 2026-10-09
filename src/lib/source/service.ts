@@ -19,13 +19,18 @@ export class SourceService {
     return { key: k, src };
   }
 
+  /** List endpoints: an unknown or disabled requested source falls back to the default. */
+  private list(key: SourceKey | undefined) {
+    return this.get(key && this.deps.sources[key] ? key : undefined);
+  }
+
   async home(page: number, mature: boolean, source?: SourceKey): Promise<CachedResult<Page<TitleSummary>>> {
-    const { key, src } = this.get(source);
+    const { key, src } = this.list(source);
     return this.deps.cache.cached(`v1:${key}:home:${page}:${mature ? 1 : 0}`, POLICIES.home, () => src.home(page, { mature }));
   }
 
   async search(q: string, page: number, mature: boolean, source?: SourceKey): Promise<CachedResult<Page<TitleSummary>>> {
-    const { key, src } = this.get(source);
+    const { key, src } = this.list(source);
     const norm = q.trim().replace(/\s+/g, " ");
     return this.deps.cache.cached(
       `v1:${key}:search:${encodeURIComponent(norm.toLowerCase())}:${page}:${mature ? 1 : 0}`,

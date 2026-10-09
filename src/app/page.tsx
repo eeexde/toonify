@@ -1,103 +1,59 @@
-import Image from "next/image";
+"use client";
+import { useCallback } from "react";
+import { useHome } from "@/lib/query/hooks";
+import { useHistory, useSettings } from "@/lib/db/hooks";
+import { DEFAULT_SETTINGS } from "@/lib/db/types";
+import { readHref, TitleCard } from "@/components/TitleCard";
+import { GridSkeleton, TitleGrid } from "@/components/TitleGrid";
+import { InfiniteSentinel } from "@/components/InfiniteSentinel";
+import { ErrorState } from "@/components/ErrorState";
+import { Footer } from "@/components/Footer";
 
-export default function Home() {
+function ContinueRow() {
+  const history = useHistory();
+  if (!history?.length) return null;
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <section className="mb-6">
+      <h2 className="mb-3 text-lg font-semibold">Continue reading</h2>
+      <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-1">
+        {history.slice(0, 12).map((h) => (
+          <div key={h.titleId} className="w-28 shrink-0">
+            <TitleCard item={{ id: h.titleId, title: h.title, cover: h.cover }} href={readHref(h.titleId, h.chapterId)} subtitle={h.chapterName} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+export default function HomePage() {
+  const settings = useSettings() ?? DEFAULT_SETTINGS;
+  const q = useHome(settings.mature, settings.source);
+  const { hasNextPage, isFetchingNextPage, fetchNextPage } = q;
+  const loadMore = useCallback(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+
+  return (
+    <>
+      <ContinueRow />
+      <h2 className="mb-3 text-lg font-semibold">Latest updates</h2>
+      {q.isPending ? (
+        <GridSkeleton />
+      ) : q.isError && items.length === 0 ? (
+        <ErrorState message={q.error.message} onRetry={() => q.refetch()} />
+      ) : (
+        <>
+          <TitleGrid>
+            {items.map((it) => <TitleCard key={it.id} item={it} />)}
+          </TitleGrid>
+          <InfiniteSentinel onVisible={loadMore} disabled={!hasNextPage} />
+          {isFetchingNextPage && <p className="py-6 text-center text-sm text-muted">Loading…</p>}
+          {q.isFetchNextPageError && <ErrorState message="Couldn't load more." onRetry={loadMore} />}
+        </>
+      )}
+      <Footer />
+    </>
   );
 }

@@ -28,6 +28,11 @@ describe("SourceService", () => {
     const a = await s.search("  Bakery ", 1, false);
     expect(a.value.items).toHaveLength(1);
   });
+  test("list endpoints fall back to default when requested source is disabled", async () => {
+    const { s } = svc();
+    expect((await s.home(1, false, "md")).value.items.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    expect((await s.search("bakery", 1, false, "sg")).value.items).toHaveLength(1);
+  });
   test("enabledSources", () => {
     expect(svc().s.enabledSources()).toEqual(["mock"]);
   });

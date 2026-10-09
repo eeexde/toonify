@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:mock": "cross-env SOURCE_MODE=mock next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
