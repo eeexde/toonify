@@ -2,6 +2,8 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "tests/e2e",
+  // next dev compiles routes on first hit; cold compiles under parallel workers exceed the 5s default.
+  expect: { timeout: 15_000 },
   use: { baseURL: "http://localhost:3100" },
   projects: [
     { name: "mobile", use: { ...devices["Pixel 7"] } },
