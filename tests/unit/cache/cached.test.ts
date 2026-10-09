@@ -89,7 +89,7 @@ describe("cached", () => {
   });
 
   test("store.set failure keeps the upstream value and is not marked failed", async () => {
-    let t = 0;
+    const t = 0;
     const now = () => t;
     const inner = new MemoryLRUStore(100, now);
     const store = {
