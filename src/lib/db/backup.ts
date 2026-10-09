@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SOURCE_KEYS } from "../source/ids";
 import type { ToonifyDB } from "./schema";
 
 const Library = z.object({
@@ -11,7 +12,13 @@ const History = z.object({
 const Progress = z.object({
   titleId: z.string(), chapterId: z.string(), pageIndex: z.number(), scrollRatio: z.number(), completed: z.boolean(), updatedAt: z.number(),
 });
-const Setting = z.object({ key: z.enum(["mature", "matureConfirmedAt", "theme", "readerWidth", "source"]), value: z.unknown() });
+const Setting = z.discriminatedUnion("key", [
+  z.object({ key: z.literal("mature"), value: z.boolean() }),
+  z.object({ key: z.literal("matureConfirmedAt"), value: z.number() }),
+  z.object({ key: z.literal("theme"), value: z.enum(["dark", "light", "system"]) }),
+  z.object({ key: z.literal("readerWidth"), value: z.number().int().min(320).max(2000) }),
+  z.object({ key: z.literal("source"), value: z.enum(SOURCE_KEYS) }),
+]);
 
 export const BackupSchema = z.object({
   version: z.literal(1),

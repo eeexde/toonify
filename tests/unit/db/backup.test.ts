@@ -32,6 +32,8 @@ describe("backup", () => {
     ["not an object", "hello"],
     ["wrong version", { version: 2, exportedAt: 1, library: [], history: [], progress: [], settings: [] }],
     ["bad row", { version: 1, exportedAt: 1, library: [{ titleId: 5 }], history: [], progress: [], settings: [] }],
+    ["bad setting value", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: "abc" }] }],
+    ["bad theme", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "theme", value: "neon" }] }],
   ])("rejects %s without writing", async (_n, input) => {
     await expect(importData(d, input)).rejects.toThrow(ImportError);
     expect(await d.library.count()).toBe(0);
