@@ -17,26 +17,46 @@ export interface CacheApi {
   invalidate(key: string): Promise<void>;
 }
 
+export const REFRESH_COOLDOWN_MS = 30_000;
+const MAX_FAILED_KEYS = 1000;
+
 export function createCache(
   store: CacheStore,
   opts: { now?: () => number; defer?: Defer } = {},
 ): CacheApi {
   const now = opts.now ?? (() => Date.now());
   const defer: Defer = opts.defer ?? ((p) => void p);
+  // inflight and failed are per-process (not shared across serverless instances).
   const inflight = new Map<string, Promise<unknown>>();
-  const failed = new Set<string>();
+  // key -> time (ms) of the most recent failed upstream call.
+  const failed = new Map<string, number>();
+
+  function markFailed(key: string) {
+    failed.delete(key);
+    failed.set(key, now());
+    while (failed.size > MAX_FAILED_KEYS) {
+      const oldest = failed.keys().next().value as string;
+      failed.delete(oldest);
+    }
+  }
 
   function run<T>(key: string, policy: CachePolicy, fn: () => Promise<T>): Promise<T> {
     const existing = inflight.get(key);
     if (existing) return existing as Promise<T>;
+    // Deferring fn to a microtask guarantees the body never runs synchronously,
+    // so inflight.set below always happens before the finally block.
     const p = (async () => {
       try {
-        const value = await fn();
-        await store.set(key, { value, storedAt: now() }, policy.fresh + policy.stale);
+        const value = await Promise.resolve().then(fn);
         failed.delete(key);
+        try {
+          await store.set(key, { value, storedAt: now() }, policy.fresh + policy.stale);
+        } catch (err) {
+          console.error("[cache] set failed", key, err);
+        }
         return value;
       } catch (err) {
-        failed.add(key);
+        markFailed(key);
         throw err;
       } finally {
         inflight.delete(key);
@@ -57,8 +77,11 @@ export function createCache(
       if (entry) {
         const ageSeconds = (now() - entry.storedAt) / 1000;
         if (ageSeconds < policy.fresh) return { value: entry.value as T, stale: false };
-        const stale = failed.has(key);
-        defer(run(key, policy, fn).catch((err) => console.warn("[cache] refresh failed", key, err)));
+        const failedAt = failed.get(key);
+        const stale = failedAt !== undefined;
+        if (failedAt === undefined || now() - failedAt >= REFRESH_COOLDOWN_MS) {
+          defer(run(key, policy, fn).catch((err) => console.warn("[cache] refresh failed", key, err)));
+        }
         return { value: entry.value as T, stale };
       }
       return { value: await run(key, policy, fn), stale: false };
