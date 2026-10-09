@@ -1,0 +1,64 @@
+import { encodeId } from "../ids";
+import { sortChapters } from "../chapters";
+import type { Chapter, Title, TitleSummary } from "../types";
+import type { MdChapter, MdManga } from "./schemas";
+
+const MATURE = new Set(["erotica", "pornographic"]);
+
+function relNames(m: MdManga, type: string): string[] {
+  return m.relationships
+    .filter((r) => r.type === type && typeof r.attributes?.name === "string")
+    .map((r) => r.attributes!.name as string);
+}
+
+export function pickTitle(m: MdManga): string {
+  const a = m.attributes;
+  return a.title.en ?? a.altTitles.find((t) => t.en)?.en ?? Object.values(a.title)[0] ?? "Untitled";
+}
+
+export function coverUrl(m: MdManga): string {
+  const rel = m.relationships.find((r) => r.type === "cover_art");
+  const file = rel?.attributes?.fileName;
+  return typeof file === "string" ? `/api/img/cover/${m.id}/${file}.512.jpg` : "/placeholder-cover.svg";
+}
+
+export function toSummary(m: MdManga): TitleSummary {
+  return {
+    id: encodeId("md", m.id),
+    title: pickTitle(m),
+    cover: coverUrl(m),
+    badge: MATURE.has(m.attributes.contentRating) ? "18+" : undefined,
+  };
+}
+
+export function toChapter(c: MdChapter): Chapter {
+  const a = c.attributes;
+  const group = c.relationships.find((r) => r.type === "scanlation_group")?.attributes?.name;
+  const base = a.chapter ? `Ch. ${a.chapter}` : "Oneshot";
+  const name = a.chapter ? (a.title ? `${base}: ${a.title}` : base) : a.title ?? base;
+  return {
+    id: c.id,
+    number: a.chapter ?? undefined,
+    name,
+    date: a.readableAt ?? a.publishAt,
+    group: typeof group === "string" ? group : undefined,
+    externalUrl: a.pages === 0 && a.externalUrl ? a.externalUrl : undefined,
+  };
+}
+
+export function toTitle(m: MdManga, chapters: MdChapter[]): Title {
+  const a = m.attributes;
+  return {
+    id: encodeId("md", m.id),
+    title: pickTitle(m),
+    altTitles: a.altTitles.flatMap((t) => Object.values(t)),
+    cover: coverUrl(m),
+    summary: a.description.en ?? Object.values(a.description)[0] ?? "",
+    status: a.status ?? undefined,
+    authors: relNames(m, "author"),
+    artists: relNames(m, "artist"),
+    genres: a.tags.map((t) => t.attributes.name.en ?? Object.values(t.attributes.name)[0]).filter(Boolean),
+    contentRating: a.contentRating,
+    chapters: sortChapters(chapters.map(toChapter)),
+  };
+}
