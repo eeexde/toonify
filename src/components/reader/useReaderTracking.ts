@@ -14,6 +14,8 @@ interface Args {
   onProgress?: (ratio: number) => void;
 }
 
+const PIN_MS = 8_000;
+
 function pageTops(): number[] {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-page-index]")).map((el) => el.getBoundingClientRect().top);
 }
@@ -22,19 +24,37 @@ export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, o
   const cb = useRef({ onPrefetch, onComplete, onScrollDown, onProgress });
   cb.current = { onPrefetch, onComplete, onScrollDown, onProgress };
 
-  // Restore saved position once pages are rendered.
+  // Restore saved position once pages are rendered. Pages above the target start as fixed-ratio
+  // placeholders and change height as their images load; browsers without scroll anchoring
+  // (Safari) would drift, so keep the target pinned until the reader interacts or PIN_MS passes.
   useEffect(() => {
     if (pageCount === 0) return;
     let cancelled = false;
+    let unpin = () => {};
     db.progress.get([titleId, chapterId]).then((p) => {
       if (cancelled || !p || p.completed || p.pageIndex <= 0) {
         if (!p) window.scrollTo(0, 0);
         return;
       }
-      document.querySelector(`[data-page-index="${p.pageIndex}"]`)?.scrollIntoView({ block: "start" });
+      const target = document.querySelector<HTMLElement>(`[data-page-index="${p.pageIndex}"]`);
+      if (!target) return;
+      target.scrollIntoView({ block: "start" });
+      const strip = target.parentElement;
+      if (!strip || typeof ResizeObserver === "undefined") return;
+      const ro = new ResizeObserver(() => target.scrollIntoView({ block: "start" }));
+      ro.observe(strip);
+      const userEvents = ["wheel", "touchstart", "pointerdown", "keydown"] as const;
+      const timer = setTimeout(() => unpin(), PIN_MS);
+      unpin = () => {
+        ro.disconnect();
+        clearTimeout(timer);
+        userEvents.forEach((e) => window.removeEventListener(e, unpin));
+      };
+      userEvents.forEach((e) => window.addEventListener(e, unpin, { passive: true, once: true }));
     });
     return () => {
       cancelled = true;
+      unpin();
     };
   }, [titleId, chapterId, pageCount]);
 

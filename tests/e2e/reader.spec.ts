@@ -45,3 +45,26 @@ test("unknown title shows not found", async ({ page }) => {
   await page.goto("/title/mock%3Anope");
   await expect(page.getByRole("heading", { name: "Not found" })).toBeVisible();
 });
+
+test("resume stays on the saved page when images above it load late (no scroll anchoring, as in Safari)", async ({ page }) => {
+  await page.goto("/read/mock%3Aalpha/1");
+  await expect(page.locator("[data-page-index]")).toHaveCount(5);
+  await page.locator('[data-page-index="3"]').evaluate((el) => el.scrollIntoView({ block: "start" }));
+  await page.waitForTimeout(2500); // periodic save
+
+  // Simulate WebKit: no scroll anchoring, and images that arrive after the restore scroll.
+  await page.addInitScript(() => {
+    const s = document.createElement("style");
+    s.textContent = "*{overflow-anchor:none!important}";
+    document.addEventListener("DOMContentLoaded", () => document.head.appendChild(s));
+  });
+  await page.route("**/api/img/**", async (route) => {
+    await new Promise((r) => setTimeout(r, 1200));
+    await route.continue();
+  });
+  await page.goto("/");
+  await page.goto("/read/mock%3Aalpha/1");
+  await page.waitForTimeout(4000);
+  const top = await page.locator('[data-page-index="3"]').evaluate((el) => el.getBoundingClientRect().top);
+  expect(Math.abs(top)).toBeLessThan(40);
+});
