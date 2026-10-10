@@ -17,4 +17,10 @@ describe("browse urls", () => {
       "/api/search?q=moon&page=2&mature=1&source=mock&tags=fantasy",
     );
   });
+  test("kind survives browseHref and reaches the API", () => {
+    expect(browseHref("bak", { kind: "manhwa" })).toBe("/?q=bak&kind=manhwa");
+    expect(browseHref("", { kind: "manhwa" })).toBe("/?kind=manhwa");
+    expect(readBrowse(new URLSearchParams("q=bak&kind=manhwa"))).toEqual({ q: "bak", filters: { kind: "manhwa" } });
+    expect(browseApiPath({ q: "", filters: { kind: "manhwa" }, page: 1, mature: false, source: "md" })).toBe("/api/home?page=1&mature=0&source=md&kind=manhwa");
+  });
 });
