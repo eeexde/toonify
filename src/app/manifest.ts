@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "A fast, mobile-first manhwa reader.",
     start_url: "/",
     display: "standalone",
-    background_color: "#0d0d12",
-    theme_color: "#0d0d12",
+    background_color: "#15121b",
+    theme_color: "#15121b",
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "maskable" },

@@ -16,7 +16,12 @@ export function Providers({ children }: { children: ReactNode }) {
     <PersistQueryClientProvider client={client} persistOptions={{ persister, maxAge: PERSIST_MAX_AGE, buster: "v1" }}>
       <ThemeApplier />
       {children}
-      <Toaster position="top-center" theme="dark" richColors />
+      <Toaster
+        position="top-center"
+        offset={{ top: "max(16px, env(safe-area-inset-top))" }}
+        mobileOffset={{ top: "max(12px, env(safe-area-inset-top))" }}
+        toastOptions={{ classNames: { toast: "toonify-toast" } }}
+      />
     </PersistQueryClientProvider>
   );
 }

@@ -1,37 +1,76 @@
 @import "tailwindcss";
 
+/*
+ * Toonify "Lamplight" tokens.
+ * Dark (default) is an aubergine ink room lit by one amber reading lamp; light is cool
+ * lilac paper with a burnt-amber accent. Component code only uses these tokens.
+ */
+
 :root,
 :root[data-theme="dark"] {
-  --bg: #0d0d12;
-  --fg: #f2f2f5;
-  --muted: #9b9bab;
-  --card: #18181f;
-  --line: #2a2a35;
-  --accent: #ff6b4a;
-  --accent-fg: #ffffff;
+  --bg: #15121b;
+  --card: #1f1a27; /* surface: cards, rows, sheets */
+  --surface-2: #2a2433; /* raised: inputs, pressed, skeleton base */
+  --line: #3a3245; /* hairlines, dividers (decorative) */
+  --line-strong: #7a7085; /* control boundaries, >= 3:1 on bg */
+  --fg: #f3ece2; /* warm paper */
+  --muted: #aba1b5;
+  --accent: #ffb23f; /* lantern amber fill */
+  --accent-fg: #241603;
+  --accent-text: #ffc266; /* amber used as text on bg */
+  --accent-soft: rgb(255 178 63 / 0.14);
+  --danger: #ff7a6b;
+  --warn-bg: rgb(255 178 63 / 0.12);
+  --warn-fg: #ffd08a;
+  --scrim: rgb(8 6 12 / 0.66);
+  --chrome: rgb(21 18 27 / 0.86); /* translucent bars */
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 12px 32px -12px rgb(0 0 0 / 0.7);
+  --glow: 0 0 0 1px rgb(255 178 63 / 0.35), 0 8px 28px -8px rgb(255 178 63 / 0.45);
   color-scheme: dark;
 }
 
 :root[data-theme="light"] {
-  --bg: #fafafb;
-  --fg: #14141a;
-  --muted: #5c5c6b;
+  --bg: #f7f5f9;
   --card: #ffffff;
-  --line: #e3e3ea;
-  --accent: #e4532f;
-  --accent-fg: #ffffff;
+  --surface-2: #eeeaf2;
+  --line: #ddd6e3;
+  --line-strong: #8e8598;
+  --fg: #1d1824;
+  --muted: #615869;
+  --accent: #f2a22c;
+  --accent-fg: #241603;
+  --accent-text: #9a5300;
+  --accent-soft: rgb(242 162 44 / 0.16);
+  --danger: #b42318;
+  --warn-bg: #fff1d6;
+  --warn-fg: #6b3d00;
+  --scrim: rgb(29 24 36 / 0.5);
+  --chrome: rgb(247 245 249 / 0.9);
+  --shadow: 0 1px 2px rgb(29 24 36 / 0.06), 0 10px 28px -14px rgb(29 24 36 / 0.28);
+  --glow: 0 0 0 1px rgb(154 83 0 / 0.25), 0 8px 24px -10px rgb(242 162 44 / 0.6);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: light) {
   :root[data-theme="system"] {
-    --bg: #fafafb;
-    --fg: #14141a;
-    --muted: #5c5c6b;
+    --bg: #f7f5f9;
     --card: #ffffff;
-    --line: #e3e3ea;
-    --accent: #e4532f;
-    --accent-fg: #ffffff;
+    --surface-2: #eeeaf2;
+    --line: #ddd6e3;
+    --line-strong: #8e8598;
+    --fg: #1d1824;
+    --muted: #615869;
+    --accent: #f2a22c;
+    --accent-fg: #241603;
+    --accent-text: #9a5300;
+    --accent-soft: rgb(242 162 44 / 0.16);
+    --danger: #b42318;
+    --warn-bg: #fff1d6;
+    --warn-fg: #6b3d00;
+    --scrim: rgb(29 24 36 / 0.5);
+    --chrome: rgb(247 245 249 / 0.9);
+    --shadow: 0 1px 2px rgb(29 24 36 / 0.06), 0 10px 28px -14px rgb(29 24 36 / 0.28);
+    --glow: 0 0 0 1px rgb(154 83 0 / 0.25), 0 8px 24px -10px rgb(242 162 44 / 0.6);
     color-scheme: light;
   }
 }
@@ -41,10 +80,24 @@
   --color-fg: var(--fg);
   --color-muted: var(--muted);
   --color-card: var(--card);
+  --color-surface-2: var(--surface-2);
   --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --color-accent-text: var(--accent-text);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-fg: var(--warn-fg);
+  --color-scrim: var(--scrim);
+  --color-chrome: var(--chrome);
+  --shadow-card: var(--shadow);
+  --shadow-glow: var(--glow);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body), ui-sans-serif, sans-serif;
+  --ease-out-soft: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --radius-cover: 10px;
 }
 
 html,
@@ -52,4 +105,99 @@ body {
   background: var(--bg);
   color: var(--fg);
   -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  overflow-x: clip; /* full-bleed backdrops use 100vw */
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* One focus treatment everywhere: an amber ring that survives on images and on dark/light. */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Display type: condensed signage, like a webtoon title logo. */
+.display {
+  font-family: var(--font-display);
+  font-variation-settings: "opsz" 72;
+  font-weight: 800;
+  letter-spacing: 0.005em;
+  line-height: 0.95;
+}
+
+/* Press feedback for touch: a short scale-down that answers the tap. */
+.press {
+  transition: transform 120ms var(--ease-out-soft), background-color 160ms, color 160ms, border-color 160ms, opacity 160ms;
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* Skeleton: a slow lamp sweep instead of a blinking pulse. */
+.skeleton {
+  background: linear-gradient(100deg, var(--surface-2) 30%, color-mix(in oklab, var(--surface-2), var(--fg) 7%) 50%, var(--surface-2) 70%);
+  background-size: 300% 100%;
+  animation: sweep 1.6s linear infinite;
+}
+@keyframes sweep {
+  from { background-position: 100% 0; }
+  to { background-position: -50% 0; }
+}
+
+@keyframes fade {
+  from { opacity: 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(16px); }
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .press:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* Toasts (sonner): themed surface, amber/danger icon instead of rich color fills. */
+:root [data-sonner-toaster][data-sonner-theme] {
+  --normal-bg: var(--card);
+  --normal-border: var(--line);
+  --normal-text: var(--fg);
+  --border-radius: 16px;
+  font-family: var(--font-sans);
+}
+:root [data-sonner-toast].toonify-toast {
+  box-shadow: var(--shadow);
+  font-size: 14px;
+  padding: 14px 16px;
+}
+:root [data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--accent-text);
+}
+:root [data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--danger);
+}
+:root [data-sonner-toast][data-type="warning"] [data-icon] {
+  color: var(--warn-fg);
 }

@@ -1,33 +1,63 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ReactNode } from "react";
+import { Icon, type IconName } from "./icons";
 
-const TABS = [
-  { href: "/", label: "Home", icon: "M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z" },
-  { href: "/search", label: "Search", icon: "M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zm10 17-5.2-5.2" },
-  { href: "/library", label: "Library", icon: "M5 3h4v18H5zM10 3h4v18h-4zM15.5 3.5l3.8-1 4.2 17.4-3.9 1z" },
-  { href: "/settings", label: "Settings", icon: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zm8.5 3a8.5 8.5 0 0 0-.1-1.3l2-1.6-2-3.4-2.4 1a8 8 0 0 0-2.2-1.3L15.4 2h-4l-.4 2.4a8 8 0 0 0-2.2 1.3l-2.4-1-2 3.4 2 1.6a8.5 8.5 0 0 0 0 2.6l-2 1.6 2 3.4 2.4-1a8 8 0 0 0 2.2 1.3l.4 2.4h4l.4-2.4a8 8 0 0 0 2.2-1.3l2.4 1 2-3.4-2-1.6c.1-.4.1-.9.1-1.3z" },
+const TABS: { href: string; label: string; icon: IconName }[] = [
+  { href: "/", label: "Home", icon: "home" },
+  { href: "/search", label: "Search", icon: "search" },
+  { href: "/library", label: "Library", icon: "library" },
+  { href: "/settings", label: "Settings", icon: "settings" },
 ];
 
-function Icon({ d }: { d: string }) {
+const isReader = (path: string) => path.startsWith("/read/");
+
+/** The brand mark: three stacked panels of a vertical strip, the top one lit. */
+export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d={d} />
-    </svg>
+    <span className={`inline-flex items-center gap-2 ${className}`}>
+      <svg viewBox="0 0 16 24" className="h-6 w-4" aria-hidden focusable="false">
+        <rect x="1" y="1" width="14" height="7" rx="2" fill="var(--accent)" />
+        <rect x="1" y="9.5" width="14" height="6" rx="2" fill="currentColor" opacity="0.55" />
+        <rect x="1" y="17" width="14" height="6" rx="2" fill="currentColor" opacity="0.3" />
+      </svg>
+      <span className="display text-[1.7rem] uppercase leading-none">Toonify</span>
+    </span>
+  );
+}
+
+export function MainFrame({ children }: { children: ReactNode }) {
+  const path = usePathname();
+  if (isReader(path)) return <main id="main">{children}</main>;
+  return (
+    <main id="main" className="mx-auto w-full max-w-6xl px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] md:px-6 md:pb-12 md:pt-8">
+      {children}
+    </main>
   );
 }
 
 export function AppNav() {
   const path = usePathname();
-  if (path.startsWith("/read/")) return null;
+  if (isReader(path)) return null;
   const active = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
     <>
-      <header className="sticky top-0 z-30 hidden border-b border-line bg-bg/90 backdrop-blur md:block">
-        <nav className="mx-auto flex max-w-6xl items-center gap-6 px-4 py-3">
-          <Link href="/" className="text-lg font-bold tracking-tight text-accent">Toonify</Link>
+      <header className="sticky top-0 z-30 hidden border-b border-line bg-chrome backdrop-blur-md md:block">
+        <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center gap-1 px-6">
+          <Link href="/" aria-label="Toonify home" className="press mr-6 rounded-lg">
+            <Wordmark />
+          </Link>
           {TABS.map((t) => (
-            <Link key={t.href} href={t.href} className={active(t.href) ? "font-semibold text-fg" : "text-muted hover:text-fg"}>
+            <Link
+              key={t.href}
+              href={t.href}
+              aria-current={active(t.href) ? "page" : undefined}
+              className={`press flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium ${
+                active(t.href) ? "bg-accent-soft text-accent-text" : "text-muted hover:bg-surface-2 hover:text-fg"
+              }`}
+            >
+              <Icon name={t.icon} className="h-[18px] w-[18px]" />
               {t.label}
             </Link>
           ))}
@@ -35,19 +65,26 @@ export function AppNav() {
       </header>
       <nav
         aria-label="Main"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-4 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-chrome pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
-        {TABS.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            aria-current={active(t.href) ? "page" : undefined}
-            className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs ${active(t.href) ? "text-accent" : "text-muted"}`}
-          >
-            <Icon d={t.icon} />
-            {t.label}
-          </Link>
-        ))}
+        <div className="mx-auto grid h-16 max-w-md grid-cols-4">
+          {TABS.map((t) => {
+            const on = active(t.href);
+            return (
+              <Link
+                key={t.href}
+                href={t.href}
+                aria-current={on ? "page" : undefined}
+                className={`press flex flex-col items-center justify-center gap-1 text-[11px] font-semibold tracking-wide ${on ? "text-accent-text" : "text-muted"}`}
+              >
+                <span className={`flex h-8 w-14 items-center justify-center rounded-full transition-colors ${on ? "bg-accent-soft" : ""}`}>
+                  <Icon name={t.icon} className="h-[22px] w-[22px]" strokeWidth={on ? 2.2 : 1.8} />
+                </span>
+                {t.label}
+              </Link>
+            );
+          })}
+        </div>
       </nav>
     </>
   );

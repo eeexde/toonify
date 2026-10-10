@@ -1,9 +1,12 @@
 export function Footer() {
   return (
-    <footer className="mt-10 border-t border-line py-6 text-center text-xs text-muted">
+    <footer className="mt-14 border-t border-line pt-6 text-center text-xs leading-relaxed text-muted">
       Data provided by{" "}
-      <a href="https://mangadex.org" target="_blank" rel="noreferrer" className="underline">MangaDex</a>. Chapters are
-      credited to their scanlation groups. Toonify is free and has no ads.
+      <a href="https://mangadex.org" target="_blank" rel="noreferrer" className="font-semibold text-fg underline decoration-line-strong underline-offset-2 hover:decoration-accent">
+        MangaDex
+      </a>
+      . Chapters are credited to their scanlation groups.
+      <br className="sm:hidden" /> Toonify is free and has no ads.
     </footer>
   );
 }
