@@ -95,7 +95,7 @@ The paged-mode wiring lives in its own hook (`usePagedTracking`) beside `useRead
 
 Unit (vitest):
 
-- `kind`: parse, invalid value rejected, URL round-trip, `filtersKey` always includes the effective kind, default is manga.
+- `kind`: parse, invalid value rejected, URL round-trip, `filtersKey` adds `k=manhwa` only for manhwa, default is manga, `SourceService` list/featured cache keys always include the effective kind.
 - `listParams`: `ja` for manga/default, `ko` for manhwa; featured passes kind.
 - `SourceService`: ScraperGo + manga returns empty without an upstream call; featured cache key includes kind.
 - `layout` derivation: `ja` → paged, `ko` → strip, `ja` + Long Strip tag → strip.
