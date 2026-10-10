@@ -1,12 +1,15 @@
 "use client";
 import { useState } from "react";
 
-export function ReaderPage({ src, index, eager }: { src: string; index: number; eager: boolean }) {
+export function ReaderPage({ src, index, eager, fit = false }: { src: string; index: number; eager: boolean; fit?: boolean }) {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [attempt, setAttempt] = useState(0);
   const url = attempt === 0 ? src : `${src}${src.includes("?") ? "&" : "?"}retry=${attempt}`;
   return (
-    <div data-page-index={index} className={state === "ok" ? "" : "relative aspect-[2/3] w-full bg-neutral-950"}>
+    <div
+      data-page-index={index}
+      className={fit ? "relative flex h-dvh w-full items-center justify-center" : state === "ok" ? "" : "relative aspect-[2/3] w-full bg-neutral-950"}
+    >
       {state !== "error" && (
         <img
           key={url}
@@ -16,7 +19,13 @@ export function ReaderPage({ src, index, eager }: { src: string; index: number; 
           decoding="async"
           onLoad={() => setState("ok")}
           onError={() => setState("error")}
-          className={state === "ok" ? "block w-full select-none" : "absolute inset-0 h-full w-full opacity-0"}
+          className={
+            state === "ok"
+              ? fit
+                ? "block max-h-dvh max-w-full select-none object-contain"
+                : "block w-full select-none"
+              : "absolute inset-0 h-full w-full opacity-0"
+          }
           draggable={false}
         />
       )}

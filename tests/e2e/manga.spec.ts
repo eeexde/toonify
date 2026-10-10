@@ -35,3 +35,60 @@ test("header search on manhwa stays on manhwa; clear all keeps the catalog", asy
   await expect(page).toHaveURL(/\/\?kind=manhwa$/);
   await expect(catalog(page).getByRole("radio", { name: "Manhwa" })).toHaveAttribute("aria-checked", "true");
 });
+
+const shown = (page: import("@playwright/test").Page) => page.locator("[data-page-index]");
+
+test("paged right-to-left: taps, arrows, end card", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveCount(1);
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+
+  const vp = page.viewportSize()!;
+  await page.mouse.click(vp.width * 0.15, vp.height / 2); // left third = next in RTL
+  await expect(shown(page)).toHaveAttribute("data-page-index", "1");
+  await page.mouse.click(vp.width * 0.85, vp.height / 2); // right third = prev
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+
+  for (let i = 0; i < 5; i++) await page.keyboard.press("ArrowLeft");
+  await expect(page.getByRole("region", { name: "End of chapter" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Next: Ch. 2" })).toBeVisible();
+  await page.getByRole("button", { name: "Back to page 5" }).click();
+  await expect(shown(page)).toHaveAttribute("data-page-index", "4");
+});
+
+test("a swipe turns exactly one page", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+  const vp = page.viewportSize()!;
+  // Swipe right (RTL next) starting in the left third: must not also count as a left-third tap.
+  await page.mouse.move(vp.width * 0.2, vp.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(vp.width * 0.8, vp.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(shown(page)).toHaveAttribute("data-page-index", "1");
+});
+
+test("paged position resumes", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "2");
+  await page.waitForTimeout(2500); // periodic save
+  await page.goto("/");
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "2");
+});
+
+test("mode override persists per title", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveCount(1);
+  await page.getByRole("button", { name: /^Reading mode:/ }).click();
+  await page.getByRole("option", { name: "Long strip" }).click();
+  await expect(shown(page)).toHaveCount(5);
+  await page.reload();
+  await expect(shown(page)).toHaveCount(5);
+
+  await page.goto("/read/mock%3Aalpha/1"); // manhwa stays a strip
+  await expect(shown(page)).toHaveCount(5);
+});

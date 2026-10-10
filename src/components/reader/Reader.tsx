@@ -4,8 +4,8 @@ import { notFound, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/query/fetcher";
 import { chapterQueryOptions, useChapter, useTitle } from "@/lib/query/hooks";
-import { useSettings } from "@/lib/db/hooks";
-import { markCompleted, recordOpen } from "@/lib/db/actions";
+import { useSettings, useTitlePref } from "@/lib/db/hooks";
+import { markCompleted, recordOpen, setReaderMode } from "@/lib/db/actions";
 import { db } from "@/lib/db/schema";
 import { DEFAULT_SETTINGS } from "@/lib/db/types";
 import { neighbors } from "@/lib/source/chapters";
@@ -13,6 +13,8 @@ import { ErrorState } from "@/components/ErrorState";
 import { readHref } from "@/components/TitleCard";
 import { ReaderOverlay } from "./ReaderOverlay";
 import { EndCard } from "./EndCard";
+import { resolveMode, type ReaderMode } from "@/lib/reader/mode";
+import { PagedView } from "./PagedView";
 import { StripView } from "./StripView";
 
 export function Reader({ titleId, chapterId }: { titleId: string; chapterId: string }) {
@@ -29,6 +31,11 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
   const current = chapters.find((c) => c.id === chapterId);
   const { prev, next } = neighbors(chapters, chapterId);
   const pages = chapterQ.data?.pages ?? [];
+  const pref = useTitlePref(titleId);
+  // Wait for the title and the stored pref so the reader never flashes the wrong mode.
+  const modeReady = pref !== undefined && !!t;
+  const mode = resolveMode(pref?.mode, t?.layout);
+  const onModeChange = useCallback((m: ReaderMode) => void setReaderMode(db, titleId, m), [titleId]);
 
   useEffect(() => {
     if (t && current) {
@@ -87,18 +94,38 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
         chapters={chapters}
         prev={prev}
         next={next}
+        mode={mode}
+        onModeChange={onModeChange}
       />
       <h1 className="sr-only">{[t?.title, current?.name].filter(Boolean).join(", ") || "Reader"}</h1>
-      <StripView
-        titleId={titleId}
-        chapterId={chapterId}
-        pages={pages}
-        pending={chapterQ.isPending}
-        readerWidth={settings.readerWidth}
-        onToggleOverlay={toggleOverlay}
-        callbacks={callbacks}
-        endCard={endCard}
-      />
+      {!modeReady ? (
+        <div role="status" aria-label="Loading chapter" className="flex h-dvh w-full items-center justify-center">
+          <span aria-hidden className="h-7 w-7 animate-spin rounded-full border-2 border-white/10 border-t-[var(--accent)]" />
+        </div>
+      ) : mode === "strip" ? (
+        <StripView
+          titleId={titleId}
+          chapterId={chapterId}
+          pages={pages}
+          pending={chapterQ.isPending}
+          readerWidth={settings.readerWidth}
+          onToggleOverlay={toggleOverlay}
+          callbacks={callbacks}
+          endCard={endCard}
+        />
+      ) : (
+        <PagedView
+          key={mode}
+          titleId={titleId}
+          chapterId={chapterId}
+          pages={pages}
+          pending={chapterQ.isPending}
+          mode={mode}
+          onToggleOverlay={toggleOverlay}
+          callbacks={callbacks}
+          endCard={endCard}
+        />
+      )}
     </div>
   );
 }
