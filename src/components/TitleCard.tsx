@@ -5,6 +5,24 @@ export const titleHref = (id: string) => `/title/${encodeURIComponent(id)}`;
 export const readHref = (titleId: string, chapterId: string) =>
   `/read/${encodeURIComponent(titleId)}/${encodeURIComponent(chapterId)}`;
 
+const STATUS: Record<string, { label: string; dot: string }> = {
+  ongoing: { label: "Ongoing", dot: "bg-accent" },
+  completed: { label: "Completed", dot: "bg-emerald-400" },
+  hiatus: { label: "Hiatus", dot: "bg-sky-300" },
+  cancelled: { label: "Cancelled", dot: "bg-rose-400" },
+};
+
+export function StatusChip({ status, className = "" }: { status?: string; className?: string }) {
+  const s = status ? STATUS[status] : undefined;
+  if (!s) return null;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md bg-black/75 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-white backdrop-blur-sm ${className}`}>
+      <span aria-hidden className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+      {s.label}
+    </span>
+  );
+}
+
 export function TitleCard({ item, dot, href, subtitle }: { item: TitleSummary; dot?: boolean; href?: string; subtitle?: string }) {
   const sub = subtitle ?? item.latest?.[0]?.label;
   return (
@@ -22,6 +40,7 @@ export function TitleCard({ item, dot, href, subtitle }: { item: TitleSummary; d
             {item.badge}
           </span>
         )}
+        <StatusChip status={item.status} className="absolute bottom-1.5 left-1.5" />
         {dot && (
           <span className="absolute right-1.5 top-1.5 flex items-center gap-1 rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-fg shadow-glow">
             <span className="sr-only">New chapters</span>

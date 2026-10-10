@@ -2,33 +2,35 @@
 import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { SourceKey } from "../source/ids";
 import type { ChapterPages, Page, Title, TitleSummary } from "../source/types";
+import { filtersKey, type Tag } from "../source/filters";
+import { browseApiPath, isSearching, type BrowseState } from "./browse";
 import { api } from "./fetcher";
 
 const MIN = 60_000;
 const enc = encodeURIComponent;
 
-export function homeQueryOptions(mature: boolean, source: SourceKey) {
+export function browseQueryOptions(state: BrowseState, mature: boolean, source: SourceKey) {
+  const term = isSearching(state.q) ? state.q.trim().toLowerCase() : "";
+  const filters = filtersKey(state.filters);
   return infiniteQueryOptions({
-    queryKey: ["home", source, mature],
-    queryFn: ({ pageParam }) => api<Page<TitleSummary>>(`/api/home?page=${pageParam}&mature=${mature ? 1 : 0}&source=${source}`),
+    queryKey: ["browse", source, mature, term, filters],
+    queryFn: ({ pageParam }) => api<Page<TitleSummary>>(browseApiPath({ q: term, filters: state.filters, page: pageParam, mature, source })),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),
-    staleTime: 10 * MIN,
+    staleTime: (term ? 30 : 10) * MIN,
   });
 }
 
-export const useHome = (mature: boolean, source: SourceKey, enabled = true) =>
-  useInfiniteQuery({ ...homeQueryOptions(mature, source), enabled });
+export const useBrowse = (state: BrowseState, mature: boolean, source: SourceKey, enabled = true) =>
+  useInfiniteQuery({ ...browseQueryOptions(state, mature, source), enabled });
 
-export function useSearch(q: string, mature: boolean, source: SourceKey, enabled = true) {
-  const term = q.trim();
-  return useQuery({
-    queryKey: ["search", source, mature, term.toLowerCase()],
-    queryFn: () => api<Page<TitleSummary>>(`/api/search?q=${enc(term)}&mature=${mature ? 1 : 0}&source=${source}`),
-    enabled: enabled && term.length >= 2,
-    staleTime: 30 * MIN,
+export const useTags = (source: SourceKey, enabled = true) =>
+  useQuery({
+    queryKey: ["tags", source],
+    queryFn: () => api<Tag[]>(`/api/tags?source=${source}`),
+    staleTime: 24 * 60 * MIN,
+    enabled,
   });
-}
 
 export const titleQueryOptions = (titleId: string) =>
   queryOptions({

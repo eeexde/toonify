@@ -33,12 +33,43 @@ test("last readable chapter disables next (external skipped)", async ({ page }) 
   await expect(page.getByRole("button", { name: "Next ›" })).toBeDisabled();
 });
 
-test("search", async ({ page }) => {
-  await page.goto("/search");
+test("search from the header turns home into results", async ({ page }) => {
+  await page.goto("/library");
   await page.getByLabel("Search manhwa").fill("bak");
+  await expect(page).toHaveURL(/\/\?q=bak$/);
+  await expect(page.getByTestId("title-card")).toHaveCount(1);
   await expect(page.getByText("Moonlit Bakery")).toBeVisible();
   await page.getByLabel("Search manhwa").fill("zzzz");
   await expect(page.getByText(/No results/)).toBeVisible();
+  await page.getByRole("button", { name: "Clear search" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(page.getByTestId("title-card")).toHaveCount(2);
+});
+
+test("old /search links redirect to home", async ({ page }) => {
+  await page.goto("/search?q=moon");
+  await expect(page).toHaveURL(/\/\?q=moon$/);
+  await expect(page.getByLabel("Search manhwa")).toHaveValue("moon");
+});
+
+test("filters: genre and sort apply to browse; cards show series status", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByTestId("title-card")).toHaveCount(2);
+  await expect(page.getByTestId("title-card").filter({ hasText: "Moonlit Bakery" }).getByText("Completed")).toBeVisible();
+  await expect(page.getByTestId("title-card").filter({ hasText: "Skyward Blade" }).getByText("Ongoing")).toBeVisible();
+
+  await page.getByRole("button", { name: "Filters" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Fantasy" }).click();
+  await page.getByRole("button", { name: "Show results" }).click();
+  await expect(page).toHaveURL(/tags=fantasy/);
+  await expect(page.getByTestId("title-card")).toHaveCount(1);
+  await expect(page.getByText("Skyward Blade").first()).toBeVisible();
+
+  await page.getByRole("button", { name: "Remove Fantasy" }).click();
+  await expect(page.getByTestId("title-card")).toHaveCount(2);
+  await page.getByLabel("Sort", { exact: true }).selectOption("title");
+  await expect(page).toHaveURL(/sort=title/);
+  await expect(page.getByTestId("title-card").first()).toContainText("Moonlit Bakery");
 });
 
 test("unknown title shows not found", async ({ page }) => {

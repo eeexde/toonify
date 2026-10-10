@@ -57,6 +57,13 @@ All component code uses CSS variables from `src/app/globals.css`, mapped to Tail
 - **Settings** — grouped cards (Reading, Content, Your data); Theme and Reader width as segmented radio groups (keyboard arrows supported); 18+ switch; Export / Import / Clear as outlined icon buttons; 18+ confirmation as a mobile bottom sheet (centered dialog on desktop) with blurred backdrop.
 - **States** — shared `EmptyState` (icon, title, body, optional action), error state with retry, skeletons using the sweep, toasts themed to the tokens, stale-data banner in warn colors, Not found and Offline pages in the same voice.
 
+## Header search and filters (follow-up)
+
+- **Search in the header.** One search field in the sticky header on every page except the reader (phone: mark + field; desktop: wordmark, nav links, field). Typing (350 ms debounce) drives Home through the URL (`/?q=`); from another page it navigates to Home. The Search tab is gone (bottom nav: Home, Library, Settings) and `/search?q=` redirects to `/?q=`.
+- **Home is the single browse surface.** No query and no filters: Continue reading + Latest updates. A 2+ character query or any filter: Results / Browse with infinite scroll; Continue reading is hidden.
+- **Filters** (`/?sort=&tags=&rating=`, shareable, back-button friendly): a bar with a Filters button (active count), a Sort select and removable chips for active genres/ratings plus Clear all; a bottom sheet (dialog on desktop) with Sort by, Content rating (mature ratings only listed when 18+ is on; the 18+ setting still clips any selection) and tags grouped Genres / Themes / Format / Content from `/api/tags`. Hidden for sources without tag support (ScraperGo).
+- **Status chip** on every cover (bottom-left, same treatment as the 18+ badge): Ongoing (amber dot), Completed (green), Hiatus (blue), Cancelled (red).
+
 ## Accessibility
 
 - Contrast (computed from tokens): dark fg/bg 15.8:1, muted/bg 7.5:1, muted/card 6.9:1, accent-text/bg 11.6:1, accent-fg/accent 9.8:1; light fg/bg 16.0:1, muted/bg 6.2:1, accent-text/bg 5.4:1, accent-fg/accent 8.4:1; control boundaries (`--line-strong`) ≥ 3.25:1. All text pairs meet WCAG AA.
