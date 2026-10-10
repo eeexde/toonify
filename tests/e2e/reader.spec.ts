@@ -67,7 +67,8 @@ test("filters: genre and sort apply to browse; cards show series status", async 
 
   await page.getByRole("button", { name: "Remove Fantasy" }).click();
   await expect(page.getByTestId("title-card")).toHaveCount(2);
-  await page.getByLabel("Sort", { exact: true }).selectOption("title");
+  await page.getByRole("button", { name: /^Sort:/ }).click();
+  await page.getByRole("option", { name: "A–Z" }).click();
   await expect(page).toHaveURL(/sort=title/);
   await expect(page.getByTestId("title-card").first()).toContainText("Moonlit Bakery");
 });
@@ -98,4 +99,27 @@ test("resume stays on the saved page when images above it load late (no scroll a
   await page.waitForTimeout(4000);
   const top = await page.locator('[data-page-index="3"]').evaluate((el) => el.getBoundingClientRect().top);
   expect(Math.abs(top)).toBeLessThan(40);
+});
+
+test("branded dropdown: reader chapter picker by mouse and keyboard", async ({ page }) => {
+  await page.goto("/read/mock%3Aalpha/1");
+  await expect(page.locator("[data-page-index]")).toHaveCount(5);
+  const trigger = page.getByRole("button", { name: /^Chapter:/ });
+  await expect(trigger).toHaveAttribute("aria-haspopup", "listbox");
+  await trigger.click();
+  const list = page.getByRole("listbox", { name: "Chapter" });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("option", { name: /Ch\. 1/ })).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Escape");
+  await expect(list).toBeHidden();
+  await expect(trigger).toBeFocused();
+
+  await trigger.press("Enter");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/read\/mock%3Aalpha\/2$/);
+
+  await page.getByRole("button", { name: /^Chapter:/ }).click();
+  await page.getByRole("option", { name: /Ch\. 3/ }).click();
+  await expect(page).toHaveURL(/\/read\/mock%3Aalpha\/3$/);
 });

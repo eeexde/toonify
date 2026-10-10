@@ -3,6 +3,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Chapter } from "@/lib/source/types";
 import { readHref, titleHref } from "@/components/TitleCard";
+import { Dropdown } from "@/components/Dropdown";
 import { Icon } from "@/components/icons";
 
 const navBtn =
@@ -73,19 +74,16 @@ export function ReaderOverlay(p: {
           <button disabled={!p.prev} onClick={() => p.prev && router.push(readHref(p.titleId, p.prev.id))} className={navBtn}>
             ‹ Prev
           </button>
-          <div className="relative min-w-0 flex-1">
-            <select
-              aria-label="Chapter"
-              value={p.chapterId}
-              onChange={(e) => router.push(readHref(p.titleId, e.target.value))}
-              className="h-11 w-full min-w-0 cursor-pointer appearance-none truncate rounded-full bg-surface-2 pl-4 pr-9 text-center text-sm font-semibold text-fg"
-            >
-              {p.chapters.filter((c) => !c.externalUrl).map((c) => (
-                <option key={c.id} value={c.id}>{c.group ? `${c.name} (${c.group})` : c.name}</option>
-              ))}
-            </select>
-            <Icon name="forward" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted" />
-          </div>
+          <Dropdown
+            label="Chapter"
+            value={p.chapterId}
+            options={p.chapters.filter((c) => !c.externalUrl).map((c) => ({ value: c.id, label: c.name, hint: c.group }))}
+            onChange={(id) => router.push(readHref(p.titleId, id))}
+            align="center"
+            className="min-w-0 flex-1"
+            triggerClassName="h-11 rounded-full bg-surface-2 pl-4 pr-3 text-center text-sm font-semibold text-fg"
+            renderValue={(o) => (o ? (o.hint ? `${o.label} (${o.hint})` : o.label) : "")}
+          />
           <button disabled={!p.next} onClick={() => p.next && router.push(readHref(p.titleId, p.next.id))} className={navBtn}>
             Next ›
           </button>

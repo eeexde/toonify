@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { effectiveRatings, hasFilters, RATINGS, type Filters, type Rating, type SortKey, type Tag } from "@/lib/source/filters";
+import { Dropdown } from "./Dropdown";
 import { buttonPrimary } from "./EmptyState";
 import { Icon } from "./icons";
 
@@ -63,20 +64,14 @@ export function FilterBar({
           Filters
           {count > 0 && <span className="rounded-full bg-accent px-1.5 text-[11px] leading-[18px] text-accent-fg">{count}</span>}
         </button>
-        <label className={`${chip(!!filters.sort)} relative pr-8`}>
-          <span className="sr-only">Sort</span>
-          <select
-            aria-label="Sort"
-            value={sort}
-            onChange={(e) => onChange({ ...filters, sort: e.target.value as SortKey })}
-            className="cursor-pointer appearance-none bg-transparent outline-none"
-          >
-            {sortOptions(searching).map((k) => (
-              <option key={k} value={k}>{SORT_LABEL[k]}</option>
-            ))}
-          </select>
-          <Icon name="chevronDown" className="pointer-events-none absolute right-2.5 h-4 w-4" />
-        </label>
+        <Dropdown
+          label="Sort"
+          value={sort}
+          options={sortOptions(searching).map((k) => ({ value: k, label: SORT_LABEL[k] }))}
+          onChange={(k) => onChange({ ...filters, sort: k })}
+          className="shrink-0"
+          triggerClassName={chip(!!filters.sort)}
+        />
         {filters.tags?.map((id) => (
           <button key={id} type="button" onClick={() => onChange(without("tags", id))} aria-label={`Remove ${tagName(id)}`} className={chip(true)}>
             {tagName(id)}

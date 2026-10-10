@@ -9,6 +9,7 @@ import { DEFAULT_SETTINGS, type Settings } from "@/lib/db/types";
 import { useHealth } from "@/lib/query/hooks";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Footer } from "@/components/Footer";
+import { Dropdown } from "@/components/Dropdown";
 import { Icon } from "@/components/icons";
 
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
@@ -146,14 +147,20 @@ export default function SettingsPage() {
         </Row>
         {sources.length > 1 && (
           <Row label="Source" hint="Where browse and search results come from.">
-            <select aria-label="Source" value={s.source} onChange={(e) => setSetting(db, "source", e.target.value as Settings["source"])}
-              className="h-11 max-w-[55%] rounded-xl border border-line-strong/70 bg-surface-2 px-3 text-sm font-semibold">
-              {sources.map(([k, st]) => (
-                <option key={k} value={k} disabled={st === "down" && k !== s.source}>
-                  {k === "md" ? "MangaDex" : k === "sg" ? "ScraperGo (Toonily)" : k}{st === "down" ? " — offline" : ""}
-                </option>
-              ))}
-            </select>
+            <Dropdown
+              label="Source"
+              value={s.source}
+              options={sources.map(([k, st]) => ({
+                value: k as Settings["source"],
+                label: k === "md" ? "MangaDex" : k === "sg" ? "ScraperGo (Toonily)" : k,
+                hint: st === "down" ? "offline" : undefined,
+                disabled: st === "down" && k !== s.source,
+              }))}
+              onChange={(v) => setSetting(db, "source", v)}
+              align="end"
+              className="max-w-[55%]"
+              triggerClassName="h-11 rounded-xl border border-line-strong/70 bg-surface-2 px-3 text-sm font-semibold"
+            />
           </Row>
         )}
       </Group>
