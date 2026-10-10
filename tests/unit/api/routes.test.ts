@@ -84,4 +84,12 @@ describe("api routes", () => {
     expect((await res.json()).data.map((t: { id: string }) => t.id)).toContain("fantasy");
     expect((await GET(req("/api/tags?source=zz"))).status).toBe(400);
   });
+  test("featured route", async () => {
+    const { GET } = await import("@/app/api/featured/route");
+    const res = await GET(req("/api/featured?mature=0"));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Cache-Control")).toContain("s-maxage=");
+    expect((await res.json()).data.map((i: { id: string }) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    expect((await GET(req("/api/featured?source=zz"))).status).toBe(400);
+  });
 });

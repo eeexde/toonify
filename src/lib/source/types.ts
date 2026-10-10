@@ -13,6 +13,12 @@ export interface TitleSummary {
   status?: string;
 }
 
+/** A title promoted in the Home banner. */
+export interface FeaturedItem extends TitleSummary {
+  summary: string;
+  genres: string[];
+}
+
 export interface Page<T> {
   items: T[];
   page: number;
@@ -60,4 +66,6 @@ export interface Source {
   chapter(rawId: string, chapterId: ChapterId): Promise<ChapterPages>;
   /** Filterable tags. Sources without it do not support sort/tag/rating filters. */
   tags?(): Promise<Tag[]>;
+  /** Titles for the Home banner. `now` is injectable for tests. */
+  featured?(opts: { mature: boolean; now?: () => number }): Promise<FeaturedItem[]>;
 }

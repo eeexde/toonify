@@ -12,4 +12,5 @@ export const POLICIES = {
   atHome: { fresh: 10 * MIN, stale: 0 },
   health: { fresh: MIN, stale: 0 },
   tags: { fresh: DAY, stale: 30 * DAY },
+  featured: { fresh: 6 * HOUR, stale: 7 * DAY },
 } satisfies Record<string, CachePolicy>;

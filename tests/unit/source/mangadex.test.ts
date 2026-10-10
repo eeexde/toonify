@@ -190,6 +190,34 @@ describe("MangaDexSource", () => {
     ].sort((a, b) => a.name.localeCompare(b.name)));
   });
 
+  test("featured: most followed, updated in the last 30 days, with synopsis and genres", async () => {
+    const { src, calls } = source({ "/manga?": { result: "ok", data: [manga()], limit: 10, offset: 0, total: 1 } });
+    const now = Date.parse("2026-10-10T12:34:56Z");
+    const items = await src.featured({ mature: false, now: () => now });
+    const u = new URL(calls[0]);
+    expect(u.searchParams.get("order[followedCount]")).toBe("desc");
+    expect(u.searchParams.get("updatedAtSince")).toBe("2026-09-10T00:00:00");
+    expect(u.searchParams.get("limit")).toBe("8");
+    expect(u.searchParams.getAll("contentRating[]")).toEqual(["safe", "suggestive"]);
+    expect(items).toEqual([{
+      id: `md:${MID}`, title: "Solo Leveling", cover: `/api/img/cover/${MID}/cover.jpg.512.jpg`, badge: undefined,
+      status: "completed", summary: "Hunters.", genres: ["Action"],
+    }]);
+  });
+
+  test("featured synopsis: first paragraph, markdown links unwrapped, clipped on a word", async () => {
+    const long = "Word ".repeat(80).trim();
+    const { src } = source({ "/manga?": { result: "ok", limit: 10, offset: 0, total: 2, data: [
+      manga({ description: { en: "Read [the novel](https://x.y) first.\n\n---\n**Links:** stuff" } }),
+      manga({ description: { en: long } }),
+    ] } });
+    const [a, b] = await src.featured({ mature: false });
+    expect(a.summary).toBe("Read the novel first.");
+    expect(b.summary.endsWith("…")).toBe(true);
+    expect(b.summary.length).toBeLessThanOrEqual(281);
+    expect(b.summary).not.toMatch(/ …$/);
+  });
+
   test("schema drift -> UpstreamError", async () => {
     const { src } = source({ "/manga?": { result: "ok", data: "nope" } });
     await expect(src.home(1, { mature: false })).rejects.toThrow(UpstreamError);

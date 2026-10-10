@@ -1,6 +1,6 @@
 import { encodeId } from "../ids";
 import { sortChapters } from "../chapters";
-import type { Chapter, Title, TitleSummary } from "../types";
+import type { Chapter, FeaturedItem, Title, TitleSummary } from "../types";
 import type { MdChapter, MdManga } from "./schemas";
 
 const MATURE = new Set(["erotica", "pornographic"]);
@@ -39,6 +39,27 @@ function httpUrl(u: string | null | undefined): string | undefined {
 /** A chapter with no pages and no usable external link cannot be read anywhere. */
 export function isUsableChapter(c: MdChapter): boolean {
   return c.attributes.pages > 0 || httpUrl(c.attributes.externalUrl) !== undefined;
+}
+
+const SYNOPSIS_MAX = 280;
+
+/** First paragraph of the English synopsis, markdown links reduced to their text, clipped for a banner. */
+export function synopsis(m: MdManga): string {
+  const d = m.attributes.description;
+  const raw = (d.en ?? Object.values(d)[0] ?? "").split(/\n\s*\n/)[0].replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").trim();
+  return raw.length > SYNOPSIS_MAX ? `${raw.slice(0, SYNOPSIS_MAX).replace(/\s+\S*$/, "")}…` : raw;
+}
+
+export function toFeatured(m: MdManga): FeaturedItem {
+  return {
+    ...toSummary(m),
+    summary: synopsis(m),
+    genres: m.attributes.tags
+      .filter((t) => t.attributes.group === "genre")
+      .map((t) => t.attributes.name.en ?? Object.values(t.attributes.name)[0])
+      .filter(Boolean)
+      .slice(0, 3),
+  };
 }
 
 export function toChapter(c: MdChapter): Chapter {

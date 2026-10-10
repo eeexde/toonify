@@ -4,7 +4,7 @@ import { InvalidIdError } from "./errors";
 import { decodeId, type SourceKey } from "./ids";
 import { mdChapterPages, UUID_RE, type AtHome, type MangaDexSource } from "./mangadex";
 import { filtersKey, type Filters, type Tag } from "./filters";
-import type { ChapterPages, Page, Source, Title, TitleId, TitleSummary } from "./types";
+import type { ChapterPages, FeaturedItem, Page, Source, Title, TitleId, TitleSummary } from "./types";
 
 export class SourceService {
   constructor(private deps: { sources: Partial<Record<SourceKey, Source>>; cache: CacheApi; defaultSource: SourceKey }) {}
@@ -40,6 +40,14 @@ export class SourceService {
       POLICIES.search,
       () => src.search(norm, page, { mature, ...filters }),
     );
+  }
+
+  /** Banner titles for a list source; [] when the source has no featured support. */
+  async featured(mature: boolean, source?: SourceKey): Promise<CachedResult<FeaturedItem[]>> {
+    const { key, src } = this.list(source);
+    if (!src.featured) return { value: [], stale: false };
+    const featured = src.featured.bind(src);
+    return this.deps.cache.cached(`v1:${key}:featured:${mature ? 1 : 0}`, POLICIES.featured, () => featured({ mature }));
   }
 
   /** Filterable tags for a list source; [] when the source has no filter support. */

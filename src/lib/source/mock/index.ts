@@ -2,7 +2,7 @@ import { sortChapters } from "../chapters";
 import { NotFoundError } from "../errors";
 import { encodeId } from "../ids";
 import { effectiveRatings, type Tag } from "../filters";
-import type { Chapter, ChapterPages, ListOpts, Page, Source, Title, TitleSummary } from "../types";
+import type { Chapter, ChapterPages, FeaturedItem, ListOpts, Page, Source, Title, TitleSummary } from "../types";
 import { MOCK_PAGES_PER_CHAPTER, MOCK_TITLES, type MockTitle } from "./fixtures";
 
 function summary(t: MockTitle): TitleSummary {
@@ -41,6 +41,10 @@ export class MockSource implements Source {
     if (opts.sort === "title") return [...out].sort((a, b) => a.title.localeCompare(b.title));
     if (opts.sort === "newest") return [...out].reverse();
     return out;
+  }
+
+  async featured(opts: { mature: boolean }): Promise<FeaturedItem[]> {
+    return this.visible({ mature: opts.mature }).map((t) => ({ ...summary(t), summary: t.summary, genres: t.genres }));
   }
 
   async tags(): Promise<Tag[]> {

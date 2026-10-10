@@ -54,6 +54,17 @@ describe("SourceService", () => {
     expect(tags).toHaveBeenCalledTimes(1);
     expect((await s.tags("sg")).value).toEqual([]);
   });
+  test("featured: cached per source and mature flag; [] for sources without it", async () => {
+    const mock = new MockSource();
+    const featured = vi.spyOn(mock, "featured");
+    const sg = { home: vi.fn(), search: vi.fn(), title: vi.fn(), chapter: vi.fn() };
+    const s = new SourceService({ sources: { mock, sg }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
+    expect((await s.featured(false)).value).toHaveLength(2);
+    await s.featured(false);
+    expect((await s.featured(true)).value).toHaveLength(3);
+    expect(featured).toHaveBeenCalledTimes(2);
+    expect((await s.featured(false, "sg")).value).toEqual([]);
+  });
   test("enabledSources", () => {
     expect(svc().s.enabledSources()).toEqual(["mock"]);
   });

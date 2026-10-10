@@ -26,6 +26,12 @@ describe("MockSource", () => {
   test("tags derived from fixture genres", async () => {
     expect((await src.tags()).map((t) => t.id)).toEqual(["action", "fantasy", "romance", "slice-of-life"]);
   });
+  test("featured: visible fixtures with synopsis and genres", async () => {
+    const f = await src.featured({ mature: false });
+    expect(f.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    expect(f[0]).toMatchObject({ title: "Skyward Blade", summary: "A swordsman climbs the tower.", genres: ["Action", "Fantasy"], status: "ongoing" });
+    expect((await src.featured({ mature: true })).length).toBe(3);
+  });
   test("title + chapter", async () => {
     const t = await src.title("alpha");
     expect(t.chapters.map((c) => c.id)).toEqual(["1", "2", "3", "4"]);

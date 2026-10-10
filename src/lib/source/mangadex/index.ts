@@ -5,12 +5,14 @@ import type { FetchJson } from "../http";
 import { encodeId } from "../ids";
 import { LIMITERS } from "../limiters";
 import { effectiveRatings, type SortKey, type Tag } from "../filters";
-import type { ChapterPages, ListOpts, Page, Source, Title, TitleSummary } from "../types";
-import { toSummary, toTitle } from "./normalize";
+import type { ChapterPages, FeaturedItem, ListOpts, Page, Source, Title, TitleSummary } from "../types";
+import { toFeatured, toSummary, toTitle } from "./normalize";
 import { AtHomeSchema, FeedSchema, MangaEntitySchema, MangaListSchema, TagListSchema, type MdChapter } from "./schemas";
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 24;
+const FEATURED_LIMIT = 8;
+const FEATURED_DAYS = 30;
 const ORDER: Record<SortKey, [string, "asc" | "desc"]> = {
   latest: ["latestUploadedChapter", "desc"],
   relevance: ["relevance", "desc"],
@@ -89,6 +91,18 @@ export class MangaDexSource implements Source {
 
   search(q: string, page: number, opts: ListOpts) {
     return this.browse(q, page, opts);
+  }
+
+  /** Featured = most followed Korean titles that got an update in the last FEATURED_DAYS days. */
+  async featured(opts: { mature: boolean; now?: () => number }): Promise<FeaturedItem[]> {
+    const p = this.listParams(1, { mature: opts.mature, sort: "follows" }, effectiveRatings(opts.mature), false);
+    p.set("limit", String(FEATURED_LIMIT));
+    p.delete("offset");
+    // Day-aligned so the upstream query (and any CDN in front of it) is stable for a whole day.
+    const since = new Date((opts.now ?? Date.now)() - FEATURED_DAYS * 86_400_000);
+    p.set("updatedAtSince", `${since.toISOString().slice(0, 10)}T00:00:00`);
+    const body = parse(MangaListSchema, await this.deps.fetchJson(`${this.base}/manga?${p}`, this.buckets.general));
+    return body.data.map(toFeatured);
   }
 
   async tags(): Promise<Tag[]> {
