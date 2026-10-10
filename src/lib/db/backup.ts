@@ -30,7 +30,7 @@ export const BackupSchema = z.object({
   progress: z.array(Progress).max(200_000),
   settings: z.array(Setting).max(20),
   /** Added with manga support; absent in older backups. */
-  titlePrefs: z.array(TitlePref).max(10_000).optional(),
+  titlePrefs: z.array(z.unknown()).max(10_000).optional(),
 });
 export type Backup = z.infer<typeof BackupSchema>;
 
@@ -52,7 +52,7 @@ export async function exportData(d: ToonifyDB): Promise<Backup> {
     history,
     progress,
     settings: settings.filter((s) => Setting.safeParse(s).success) as Backup["settings"],
-    titlePrefs,
+    titlePrefs: titlePrefs.filter((p) => TitlePref.safeParse(p).success),
   };
 }
 
@@ -74,7 +74,10 @@ export async function importData(d: ToonifyDB, input: unknown) {
       if (!cur || cur.updatedAt < item.updatedAt) await d.progress.put(item);
     }
     for (const s of b.settings) await d.settings.put(s);
-    for (const p of b.titlePrefs ?? []) await d.titlePrefs.put(p);
+    for (const p of b.titlePrefs ?? []) {
+      const r = TitlePref.safeParse(p);
+      if (r.success) await d.titlePrefs.put(r.data);
+    }
   });
   return { library: b.library.length, history: b.history.length, progress: b.progress.length };
 }

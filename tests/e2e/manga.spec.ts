@@ -1,20 +1,20 @@
 import { expect, test } from "@playwright/test";
 
-const catalog = (page: import("@playwright/test").Page) => page.getByRole("radiogroup", { name: "Catalog" });
+const catalog = (page: import("@playwright/test").Page) => page.getByRole("group", { name: "Catalog" });
 
 test("home opens on manga; the toggle switches catalogs and back", async ({ page }) => {
   await page.goto("/");
-  await expect(catalog(page).getByRole("radio", { name: "Manga" })).toHaveAttribute("aria-checked", "true");
+  await expect(catalog(page).getByRole("button", { name: "Manga" })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("title-card")).toHaveCount(2);
   await expect(page.getByTestId("title-card").filter({ hasText: "Paper Lantern" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Featured" }).getByRole("list", { name: "Featured titles" }).getByRole("listitem")).toHaveCount(2);
 
-  await catalog(page).getByRole("radio", { name: "Manhwa" }).click();
+  await catalog(page).getByRole("button", { name: "Manhwa" }).click();
   await expect(page).toHaveURL(/\/\?kind=manhwa$/);
   await expect(page.getByTestId("title-card").filter({ hasText: "Skyward Blade" })).toBeVisible();
   await expect(page.getByTestId("title-card")).toHaveCount(2);
 
-  await catalog(page).getByRole("radio", { name: "Manga" }).click();
+  await catalog(page).getByRole("button", { name: "Manga" }).click();
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId("title-card").filter({ hasText: "Iron Courier" })).toBeVisible();
 });
@@ -33,7 +33,7 @@ test("header search on manhwa stays on manhwa; clear all keeps the catalog", asy
   await expect(page).toHaveURL(/kind=manhwa&sort=title/);
   await page.getByRole("button", { name: "Clear all" }).click();
   await expect(page).toHaveURL(/\/\?kind=manhwa$/);
-  await expect(catalog(page).getByRole("radio", { name: "Manhwa" })).toHaveAttribute("aria-checked", "true");
+  await expect(catalog(page).getByRole("button", { name: "Manhwa" })).toHaveAttribute("aria-pressed", "true");
 });
 
 const shown = (page: import("@playwright/test").Page) => page.locator("[data-page-index]");
@@ -120,4 +120,28 @@ test("switching paged direction keeps the current page", async ({ page }) => {
   await expect(shown(page)).toHaveAttribute("data-page-index", "2");
   await page.keyboard.press("ArrowRight"); // ltr: right = next
   await expect(shown(page)).toHaveAttribute("data-page-index", "3");
+});
+
+test("modified arrow keys do not turn the page", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+  const prevented = await page.evaluate(() => {
+    const e = new KeyboardEvent("keydown", { key: "ArrowLeft", altKey: true, cancelable: true });
+    window.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(prevented).toBe(false);
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+  await page.keyboard.press("Alt+ArrowLeft");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+});
+
+test("no results offers the other catalog", async ({ page }) => {
+  await page.goto("/library");
+  await page.getByLabel("Search titles").fill("bak");
+  await expect(page.getByRole("button", { name: "Search manhwa instead" })).toBeVisible();
+  await page.getByRole("button", { name: "Search manhwa instead" }).click();
+  await expect(page).toHaveURL(/\/\?q=bak&kind=manhwa$/);
+  await expect(page.getByTestId("title-card")).toHaveCount(1);
+  await expect(page.getByText("Moonlit Bakery")).toBeVisible();
 });

@@ -81,6 +81,7 @@ function HomeInner() {
   const setFilters = (f: Filters) => router.replace(browseHref(state.q, f), { scroll: false });
   const kind = effectiveKind(state.filters);
   const setKind = (k: Kind) => setFilters({ ...state.filters, kind: k === DEFAULT_KIND ? undefined : k });
+  const other: Kind = kind === "manga" ? "manhwa" : "manga";
   const kindAvailable = sourceSupportsKind(settings.source, kind);
 
   const seen = new Set<string>();
@@ -116,7 +117,23 @@ function HomeInner() {
           <ErrorState message={q.error.message} onRetry={() => q.refetch()} />
         ) : items.length === 0 ? (
           searching ? (
-            <EmptyState role="status" icon="search" title={`No results for “${term}”.`} body={filtered ? "Try removing a filter, or check the spelling." : "Check the spelling, or try a shorter part of the title."} />
+            <EmptyState
+              role="status"
+              icon="search"
+              title={`No results for “${term}”.`}
+              body={filtered ? "Try removing a filter, or check the spelling." : "Check the spelling, or try a shorter part of the title."}
+              action={
+                sourceSupportsKind(settings.source, other) ? (
+                  <button
+                    type="button"
+                    onClick={() => router.replace(browseHref(state.q, { ...state.filters, kind: other === DEFAULT_KIND ? undefined : other }), { scroll: false })}
+                    className={buttonSecondary}
+                  >
+                    Search {other} instead
+                  </button>
+                ) : undefined
+              }
+            />
           ) : (
             <EmptyState
               role="status"

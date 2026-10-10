@@ -1,7 +1,7 @@
 # Manga support — design
 
 Date: 2026-10-11
-Status: approved in chat, pending spec review
+Status: approved; implemented on feat/manga-support
 
 ## Goal
 

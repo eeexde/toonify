@@ -2,7 +2,7 @@
 import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { SourceKey } from "../source/ids";
 import type { ChapterPages, FeaturedItem, Page, Title, TitleSummary } from "../source/types";
-import { filtersKey, type Kind, type Tag } from "../source/filters";
+import { effectiveKind, filtersKey, type Kind, type Tag } from "../source/filters";
 import { browseApiPath, isSearching, type BrowseState } from "./browse";
 import { api } from "./fetcher";
 
@@ -13,7 +13,7 @@ export function browseQueryOptions(state: BrowseState, mature: boolean, source: 
   const term = isSearching(state.q) ? state.q.trim().toLowerCase() : "";
   const filters = filtersKey(state.filters);
   return infiniteQueryOptions({
-    queryKey: ["browse", source, mature, term, filters],
+    queryKey: ["browse", source, mature, effectiveKind(state.filters), term, filters],
     queryFn: ({ pageParam }) => api<Page<TitleSummary>>(browseApiPath({ q: term, filters: state.filters, page: pageParam, mature, source })),
     initialPageParam: 1,
     getNextPageParam: (last) => (last.hasMore ? last.page + 1 : undefined),

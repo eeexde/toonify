@@ -40,6 +40,13 @@ describe("backup", () => {
     await expect(importData(d2, old)).resolves.toBeTruthy();
   });
 
+  test("drops unknown reader modes but imports the rest", async () => {
+    const input = { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [], titlePrefs: [{ titleId: "t", mode: "sideways" }, { titleId: "u", mode: "paged-ltr" }] };
+    await importData(d, input);
+    expect(await d.titlePrefs.get("t")).toBeUndefined();
+    expect(await d.titlePrefs.get("u")).toEqual({ titleId: "u", mode: "paged-ltr" });
+  });
+
   test.each([
     ["not an object", "hello"],
     ["wrong version", { version: 2, exportedAt: 1, library: [], history: [], progress: [], settings: [] }],
@@ -48,7 +55,6 @@ describe("backup", () => {
     ["bad theme", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "theme", value: "neon" }] }],
     ["mature string", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "mature", value: "no" }] }],
     ["unknown source", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "source", value: "xyz" }] }],
-    ["bad reader mode", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [], titlePrefs: [{ titleId: "t", mode: "sideways" }] }],
     ["readerWidth object", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: {} }] }],
     ["readerWidth out of range", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: 100000 }] }],
     ["negative pageIndex", { version: 1, exportedAt: 1, library: [{ titleId: "t", title: "T", cover: "c", addedAt: 1 }], history: [], progress: [{ titleId: "t", chapterId: "c", pageIndex: -1, scrollRatio: 0.5, completed: false, updatedAt: 1 }], settings: [] }],
