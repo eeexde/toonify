@@ -1,4 +1,4 @@
-import type { Filters, Tag } from "./filters";
+import type { Filters, Kind, Tag } from "./filters";
 
 export type TitleId = string;
 export type ChapterId = string;
@@ -45,6 +45,8 @@ export interface Title {
   artists: string[];
   genres: string[];
   contentRating?: string;
+  /** Absent in titles cached before manga support; readers treat that as "strip". */
+  layout?: Layout;
   chapters: Chapter[];
 }
 
@@ -53,6 +55,9 @@ export interface ChapterPages {
   chapterId: ChapterId;
   pages: string[];
 }
+
+/** How a title's pages are meant to be read: a vertical strip (manhwa) or one page at a time (manga). */
+export type Layout = "strip" | "paged";
 
 export interface ListOpts extends Filters {
   mature: boolean;
@@ -67,5 +72,5 @@ export interface Source {
   /** Filterable tags. Sources without it do not support sort/tag/rating filters. */
   tags?(): Promise<Tag[]>;
   /** Titles for the Home banner. `now` is injectable for tests. */
-  featured?(opts: { mature: boolean; now?: () => number }): Promise<FeaturedItem[]>;
+  featured?(opts: { mature: boolean; kind?: Kind; now?: () => number }): Promise<FeaturedItem[]>;
 }

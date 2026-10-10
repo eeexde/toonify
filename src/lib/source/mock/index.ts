@@ -1,7 +1,7 @@
 import { sortChapters } from "../chapters";
 import { NotFoundError } from "../errors";
 import { encodeId } from "../ids";
-import { effectiveRatings, type Tag } from "../filters";
+import { effectiveKind, effectiveRatings, type Kind, type Tag } from "../filters";
 import type { Chapter, ChapterPages, FeaturedItem, ListOpts, Page, Source, Title, TitleSummary } from "../types";
 import { MOCK_PAGES_PER_CHAPTER, MOCK_TITLES, type MockTitle } from "./fixtures";
 
@@ -35,16 +35,17 @@ function find(slug: string): MockTitle {
 export class MockSource implements Source {
   private visible(opts: ListOpts) {
     const ratings = effectiveRatings(opts.mature, opts.ratings);
+    const kind = effectiveKind(opts);
     const out = MOCK_TITLES.filter(
-      (t) => ratings.includes(t.rating) && (opts.tags ?? []).every((id) => t.genres.some((g) => tagId(g) === id)),
+      (t) => t.kind === kind && ratings.includes(t.rating) && (opts.tags ?? []).every((id) => t.genres.some((g) => tagId(g) === id)),
     );
     if (opts.sort === "title") return [...out].sort((a, b) => a.title.localeCompare(b.title));
     if (opts.sort === "newest") return [...out].reverse();
     return out;
   }
 
-  async featured(opts: { mature: boolean }): Promise<FeaturedItem[]> {
-    return this.visible({ mature: opts.mature }).map((t) => ({ ...summary(t), summary: t.summary, genres: t.genres }));
+  async featured(opts: { mature: boolean; kind?: Kind }): Promise<FeaturedItem[]> {
+    return this.visible({ mature: opts.mature, kind: opts.kind }).map((t) => ({ ...summary(t), summary: t.summary, genres: t.genres }));
   }
 
   async tags(): Promise<Tag[]> {
@@ -75,6 +76,7 @@ export class MockSource implements Source {
       artists: ["Mock Artist"],
       genres: t.genres,
       contentRating: t.rating,
+      layout: t.kind === "manga" ? "paged" : "strip",
       chapters: chaptersOf(t),
     };
   }
