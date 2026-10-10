@@ -8,7 +8,7 @@ test("18+ requires confirmation", async ({ page }) => {
   await page.getByRole("switch", { name: "Show 18+ content" }).click();
   await page.getByRole("button", { name: "I am 18 or older" }).click();
   await expect(page.getByRole("switch", { name: "Show 18+ content" })).toHaveAttribute("aria-checked", "true");
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   await expect(page.getByTestId("title-card").filter({ hasText: "Crimson Night" })).toBeVisible();
 });
 

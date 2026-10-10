@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Toonify",
     short_name: "Toonify",
-    description: "A fast, mobile-first manhwa reader.",
+    description: "A fast, mobile-first manhwa & manga reader.",
     start_url: "/",
     display: "standalone",
     background_color: "#15121b",
