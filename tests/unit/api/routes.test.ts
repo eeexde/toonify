@@ -68,7 +68,7 @@ describe("api routes", () => {
   });
   test("home applies filters from query params", async () => {
     const { GET } = await import("@/app/api/home/route");
-    const res = await GET(req("/api/home?page=1&mature=1&tags=fantasy&sort=title"));
+    const res = await GET(req("/api/home?page=1&mature=1&tags=fantasy&sort=title&kind=manhwa"));
     expect((await res.json()).data.items.map((i: { id: string }) => i.id)).toEqual(["mock:alpha"]);
   });
   test("invalid filters -> 400", async () => {
@@ -86,10 +86,12 @@ describe("api routes", () => {
   });
   test("featured route", async () => {
     const { GET } = await import("@/app/api/featured/route");
-    const res = await GET(req("/api/featured?mature=0"));
+    const res = await GET(req("/api/featured?mature=0&kind=manhwa"));
     expect(res.status).toBe(200);
     expect(res.headers.get("Cache-Control")).toContain("s-maxage=");
     expect((await res.json()).data.map((i: { id: string }) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
     expect((await GET(req("/api/featured?source=zz"))).status).toBe(400);
+    expect((await GET(req("/api/featured?kind=manhua"))).status).toBe(400);
+    expect((await (await GET(req("/api/featured?mature=0"))).json()).data.map((i: { id: string }) => i.id)).toEqual(["mock:delta", "mock:epsilon"]);
   });
 });

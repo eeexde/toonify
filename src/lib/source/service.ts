@@ -3,7 +3,7 @@ import { POLICIES } from "../cache/policies";
 import { InvalidIdError } from "./errors";
 import { decodeId, type SourceKey } from "./ids";
 import { mdChapterPages, UUID_RE, type AtHome, type MangaDexSource } from "./mangadex";
-import { filtersKey, type Filters, type Tag } from "./filters";
+import { DEFAULT_KIND, effectiveKind, filtersKey, sourceSupportsKind, type Filters, type Kind, type Tag } from "./filters";
 import type { ChapterPages, FeaturedItem, Page, Source, Title, TitleId, TitleSummary } from "./types";
 
 export class SourceService {
@@ -27,27 +27,31 @@ export class SourceService {
 
   async home(page: number, mature: boolean, source?: SourceKey, filters: Filters = {}): Promise<CachedResult<Page<TitleSummary>>> {
     const { key, src } = this.list(source);
-    return this.deps.cache.cached(`v1:${key}:home:${page}:${mature ? 1 : 0}${suffix(filters)}`, POLICIES.home, () =>
+    const kind = effectiveKind(filters);
+    if (!sourceSupportsKind(key, kind)) return { value: { items: [], page, hasMore: false }, stale: false };
+    return this.deps.cache.cached(`v1:${key}:home:${kind}:${page}:${mature ? 1 : 0}${suffix(filters)}`, POLICIES.home, () =>
       src.home(page, { mature, ...filters }),
     );
   }
 
   async search(q: string, page: number, mature: boolean, source?: SourceKey, filters: Filters = {}): Promise<CachedResult<Page<TitleSummary>>> {
     const { key, src } = this.list(source);
+    const kind = effectiveKind(filters);
+    if (!sourceSupportsKind(key, kind)) return { value: { items: [], page, hasMore: false }, stale: false };
     const norm = q.trim().replace(/\s+/g, " ");
     return this.deps.cache.cached(
-      `v1:${key}:search:${encodeURIComponent(norm.toLowerCase())}:${page}:${mature ? 1 : 0}${suffix(filters)}`,
+      `v1:${key}:search:${kind}:${encodeURIComponent(norm.toLowerCase())}:${page}:${mature ? 1 : 0}${suffix(filters)}`,
       POLICIES.search,
       () => src.search(norm, page, { mature, ...filters }),
     );
   }
 
-  /** Banner titles for a list source; [] when the source has no featured support. */
-  async featured(mature: boolean, source?: SourceKey): Promise<CachedResult<FeaturedItem[]>> {
+  /** Banner titles for a list source and kind; [] when the source has no featured support or lacks the kind. */
+  async featured(mature: boolean, source?: SourceKey, kind: Kind = DEFAULT_KIND): Promise<CachedResult<FeaturedItem[]>> {
     const { key, src } = this.list(source);
-    if (!src.featured) return { value: [], stale: false };
+    if (!src.featured || !sourceSupportsKind(key, kind)) return { value: [], stale: false };
     const featured = src.featured.bind(src);
-    return this.deps.cache.cached(`v1:${key}:featured:${mature ? 1 : 0}`, POLICIES.featured, () => featured({ mature }));
+    return this.deps.cache.cached(`v1:${key}:featured:${kind}:${mature ? 1 : 0}`, POLICIES.featured, () => featured({ mature, kind }));
   }
 
   /** Filterable tags for a list source; [] when the source has no filter support. */

@@ -25,23 +25,23 @@ describe("SourceService", () => {
   });
   test("search key normalizes query", async () => {
     const { s } = svc();
-    const a = await s.search("  Bakery ", 1, false);
+    const a = await s.search("  Bakery ", 1, false, undefined, { kind: "manhwa" });
     expect(a.value.items).toHaveLength(1);
   });
   test("list endpoints fall back to default when requested source is disabled", async () => {
     const { s } = svc();
-    expect((await s.home(1, false, "md")).value.items.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
-    expect((await s.search("bakery", 1, false, "sg")).value.items).toHaveLength(1);
+    expect((await s.home(1, false, "md", { kind: "manhwa" })).value.items.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    expect((await s.search("bakery", 1, false, "sg", { kind: "manhwa" })).value.items).toHaveLength(1);
   });
   test("filters are part of the cache key and reach the source", async () => {
     const mock = new MockSource();
     const home = vi.spyOn(mock, "home");
     const s = new SourceService({ sources: { mock }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
-    await s.home(1, true, undefined, { tags: ["fantasy"] });
-    await s.home(1, true, undefined, { tags: ["fantasy"] });
-    const r = await s.home(1, true, undefined, { tags: ["romance"] });
+    await s.home(1, true, undefined, { kind: "manhwa", tags: ["fantasy"] });
+    await s.home(1, true, undefined, { kind: "manhwa", tags: ["fantasy"] });
+    const r = await s.home(1, true, undefined, { kind: "manhwa", tags: ["romance"] });
     expect(home).toHaveBeenCalledTimes(2);
-    expect(home).toHaveBeenLastCalledWith(1, { mature: true, tags: ["romance"] });
+    expect(home).toHaveBeenLastCalledWith(1, { mature: true, kind: "manhwa", tags: ["romance"] });
     expect(r.value.items.map((i) => i.id)).toEqual(["mock:gamma"]);
   });
   test("tags: cached per source; sources without tags -> []", async () => {
@@ -49,7 +49,7 @@ describe("SourceService", () => {
     const tags = vi.spyOn(mock, "tags");
     const sg = { home: vi.fn(), search: vi.fn(), title: vi.fn(), chapter: vi.fn() };
     const s = new SourceService({ sources: { mock, sg }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
-    expect((await s.tags()).value.length).toBe(4);
+    expect((await s.tags()).value.length).toBe(5);
     await s.tags();
     expect(tags).toHaveBeenCalledTimes(1);
     expect((await s.tags("sg")).value).toEqual([]);
@@ -59,11 +59,39 @@ describe("SourceService", () => {
     const featured = vi.spyOn(mock, "featured");
     const sg = { home: vi.fn(), search: vi.fn(), title: vi.fn(), chapter: vi.fn() };
     const s = new SourceService({ sources: { mock, sg }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
-    expect((await s.featured(false)).value).toHaveLength(2);
-    await s.featured(false);
-    expect((await s.featured(true)).value).toHaveLength(3);
+    expect((await s.featured(false, undefined, "manhwa")).value).toHaveLength(2);
+    await s.featured(false, undefined, "manhwa");
+    expect((await s.featured(true, undefined, "manhwa")).value).toHaveLength(3);
     expect(featured).toHaveBeenCalledTimes(2);
     expect((await s.featured(false, "sg")).value).toEqual([]);
+  });
+  test("kind is always in the list cache key, default manga", async () => {
+    const mock = new MockSource();
+    const home = vi.spyOn(mock, "home");
+    const s = new SourceService({ sources: { mock }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
+    expect((await s.home(1, false)).value.items.map((i) => i.id)).toEqual(["mock:delta", "mock:epsilon"]);
+    expect((await s.home(1, false, undefined, { kind: "manhwa" })).value.items.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    await s.home(1, false);
+    expect(home).toHaveBeenCalledTimes(2);
+  });
+  test("manga on a manhwa-only source is empty without an upstream call", async () => {
+    const sg = { home: vi.fn(), search: vi.fn(), title: vi.fn(), chapter: vi.fn(), featured: vi.fn() };
+    const s = new SourceService({ sources: { sg }, cache: createCache(new MemoryLRUStore()), defaultSource: "sg" });
+    expect((await s.home(2, false)).value).toEqual({ items: [], page: 2, hasMore: false });
+    expect((await s.search("x", 1, false)).value).toEqual({ items: [], page: 1, hasMore: false });
+    expect((await s.featured(false)).value).toEqual([]);
+    expect(sg.home).not.toHaveBeenCalled();
+    expect(sg.search).not.toHaveBeenCalled();
+    expect(sg.featured).not.toHaveBeenCalled();
+  });
+  test("featured is cached per kind", async () => {
+    const mock = new MockSource();
+    const featured = vi.spyOn(mock, "featured");
+    const s = new SourceService({ sources: { mock }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
+    expect((await s.featured(false)).value.map((i) => i.id)).toEqual(["mock:delta", "mock:epsilon"]);
+    expect((await s.featured(false, undefined, "manhwa")).value.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
+    expect(featured).toHaveBeenCalledTimes(2);
+    expect(featured).toHaveBeenLastCalledWith({ mature: false, kind: "manhwa" });
   });
   test("enabledSources", () => {
     expect(svc().s.enabledSources()).toEqual(["mock"]);
