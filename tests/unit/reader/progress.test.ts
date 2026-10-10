@@ -16,7 +16,7 @@ describe("reader progress", () => {
   });
 });
 
-import { createTracker, type Measure } from "@/lib/reader/progress";
+import { clampRestore, createTracker, pagedMeasure, type Measure } from "@/lib/reader/progress";
 import { vi } from "vitest";
 
 describe("createTracker", () => {
@@ -64,5 +64,37 @@ describe("createTracker", () => {
     const b = mk(m, { pageCount: 0 });
     b.t.update();
     expect(b.onComplete).not.toHaveBeenCalled();
+  });
+});
+
+describe("paged progress", () => {
+  test("pagedMeasure: ratio counts the current page as read; end card = 1", () => {
+    expect(pagedMeasure(0, 5)).toMatchObject({ pageIndex: 0, ratio: 0.2 });
+    expect(pagedMeasure(4, 5)).toMatchObject({ pageIndex: 4, ratio: 1 });
+    expect(pagedMeasure(5, 5)).toMatchObject({ pageIndex: 4, ratio: 1 });
+    expect(pagedMeasure(0, 0)).toMatchObject({ pageIndex: 0, ratio: 0 });
+  });
+  test("drives the tracker: forward hides chrome, prefetch at 0.7, complete on the last page", () => {
+    let i = 0;
+    const onPrefetch = vi.fn();
+    const onComplete = vi.fn(() => true);
+    const onScrollDown = vi.fn();
+    const t = createTracker({ pageCount: 5, measure: () => pagedMeasure(i, 5), persist: vi.fn(), onPrefetch, onComplete, onScrollDown });
+    i = 1; t.update();
+    expect(onScrollDown).toHaveBeenCalledTimes(1);
+    i = 2; t.update();
+    expect(onPrefetch).not.toHaveBeenCalled();
+    i = 3; t.update();
+    expect(onPrefetch).toHaveBeenCalledTimes(1);
+    expect(onComplete).not.toHaveBeenCalled();
+    i = 4; t.update();
+    expect(onComplete).toHaveBeenCalledTimes(1);
+  });
+  test("clampRestore keeps a saved page inside the chapter", () => {
+    expect(clampRestore(undefined, 5)).toBe(0);
+    expect(clampRestore(2, 5)).toBe(2);
+    expect(clampRestore(12, 5)).toBe(4);
+    expect(clampRestore(-1, 5)).toBe(0);
+    expect(clampRestore(3, 0)).toBe(0);
   });
 });
