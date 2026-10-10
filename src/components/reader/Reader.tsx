@@ -33,7 +33,7 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
   const pages = chapterQ.data?.pages ?? [];
   const pref = useTitlePref(titleId);
   // Wait for the title and the stored pref so the reader never flashes the wrong mode.
-  const modeReady = pref !== undefined && !!t;
+  const modeReady = pref !== undefined && (!!t || titleQ.isError);
   const mode = resolveMode(pref?.mode, t?.layout);
   const onModeChange = useCallback((m: ReaderMode) => void setReaderMode(db, titleId, m), [titleId]);
 

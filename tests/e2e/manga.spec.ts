@@ -92,3 +92,31 @@ test("mode override persists per title", async ({ page }) => {
   await page.goto("/read/mock%3Aalpha/1"); // manhwa stays a strip
   await expect(shown(page)).toHaveCount(5);
 });
+
+test("falls back to strip when the title fails to load", async ({ page }) => {
+  await page.route("**/api/title/**", (route) =>
+    route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Source unavailable" }),
+    }),
+  );
+  await page.goto("/read/mock%3Aalpha/1");
+  await expect(page.locator("[data-page-index]")).toHaveCount(5, { timeout: 20_000 });
+});
+
+test("switching paged direction keeps the current page", async ({ page }) => {
+  await page.goto("/read/mock%3Adelta/1");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "0");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(shown(page)).toHaveAttribute("data-page-index", "2");
+  const vp = page.viewportSize()!;
+  const modeBtn = page.getByRole("button", { name: /^Reading mode:/ });
+  if (!(await modeBtn.isVisible())) await page.mouse.click(vp.width / 2, vp.height / 2);
+  await modeBtn.click();
+  await page.getByRole("option", { name: "Paged, left to right" }).click();
+  await expect(shown(page)).toHaveAttribute("data-page-index", "2");
+  await page.keyboard.press("ArrowRight"); // ltr: right = next
+  await expect(shown(page)).toHaveAttribute("data-page-index", "3");
+});
