@@ -6,6 +6,7 @@ import { readHref, titleHref } from "@/components/TitleCard";
 
 export function ReaderOverlay(p: {
   visible: boolean;
+  progress: number;
   titleId: string;
   title: string;
   chapterId: string;
@@ -18,6 +19,16 @@ export function ReaderOverlay(p: {
   const hide = p.visible ? "translate-y-0 opacity-100" : "pointer-events-none opacity-0";
   return (
     <>
+      <div
+        role="progressbar"
+        aria-label="Chapter progress"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(p.progress * 100)}
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5"
+      >
+        <div className="h-full origin-left bg-accent" style={{ transform: `scaleX(${p.progress})` }} />
+      </div>
       <div className={`fixed inset-x-0 top-0 z-40 bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur transition ${hide} ${p.visible ? "" : "-translate-y-full"}`}>
         <div className="mx-auto flex max-w-3xl items-center gap-3 px-3 py-2">
           <Link href={titleHref(p.titleId)} aria-label="Back to title" className="flex h-11 w-11 items-center justify-center text-xl">←</Link>

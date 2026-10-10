@@ -13,13 +13,17 @@ interface Deps {
   mockEnabled: boolean;
 }
 
+const IMAGE_TYPE = /^image\/(jpeg|png|webp|gif|avif)\b/i;
+
 const notFound = () => new Response("Not found", { status: 404 });
 
 async function tryFetch(url: string, doFetch: typeof fetch): Promise<Response | null> {
   if (!isAllowedImageHost(url)) return null;
   try {
-    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(15_000) });
-    return res.ok && res.body ? res : null;
+    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(10_000), redirect: "error" });
+    if (res.ok && res.body && IMAGE_TYPE.test(res.headers.get("Content-Type") ?? "")) return res;
+    await res.body?.cancel().catch(() => {});
+    return null;
   } catch {
     return null;
   }
@@ -28,7 +32,7 @@ async function tryFetch(url: string, doFetch: typeof fetch): Promise<Response | 
 function pass(res: Response): Response {
   return new Response(res.body, {
     status: 200,
-    headers: { "Content-Type": res.headers.get("Content-Type") ?? "image/jpeg", "Cache-Control": IMMUTABLE },
+    headers: { "Content-Type": res.headers.get("Content-Type") ?? "image/jpeg", "Cache-Control": IMMUTABLE, "X-Content-Type-Options": "nosniff" },
   });
 }
 

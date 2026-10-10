@@ -2,7 +2,7 @@ import type { CacheApi, CachedResult } from "../cache/cached";
 import { POLICIES } from "../cache/policies";
 import { InvalidIdError } from "./errors";
 import { decodeId, type SourceKey } from "./ids";
-import type { AtHome, MangaDexSource } from "./mangadex";
+import { mdChapterPages, UUID_RE, type AtHome, type MangaDexSource } from "./mangadex";
 import type { ChapterPages, Page, Source, Title, TitleId, TitleSummary } from "./types";
 
 export class SourceService {
@@ -48,7 +48,15 @@ export class SourceService {
   async chapter(titleId: TitleId, chapterId: string): Promise<CachedResult<ChapterPages>> {
     const { source, raw } = decodeId(titleId);
     const { src } = this.get(source);
-    return this.deps.cache.cached(`v1:${source}:chapter:${raw}:${chapterId}`, POLICIES.chapter, () => src.chapter(raw, chapterId));
+    const key = `v1:${source}:chapter:${raw}:${chapterId}`;
+    if (source === "md") {
+      // Reuse the at-home cache so the reader's page list and image proxy share one upstream call.
+      return this.deps.cache.cached(key, POLICIES.chapter, async () => {
+        if (!UUID_RE.test(raw) || !UUID_RE.test(chapterId)) throw new InvalidIdError();
+        return mdChapterPages(raw, chapterId, await this.mdAtHome(chapterId));
+      });
+    }
+    return this.deps.cache.cached(key, POLICIES.chapter, () => src.chapter(raw, chapterId));
   }
 
   async mdAtHome(chapterId: string, refresh = false): Promise<AtHome> {

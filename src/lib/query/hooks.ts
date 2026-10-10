@@ -17,14 +17,15 @@ export function homeQueryOptions(mature: boolean, source: SourceKey) {
   });
 }
 
-export const useHome = (mature: boolean, source: SourceKey) => useInfiniteQuery(homeQueryOptions(mature, source));
+export const useHome = (mature: boolean, source: SourceKey, enabled = true) =>
+  useInfiniteQuery({ ...homeQueryOptions(mature, source), enabled });
 
-export function useSearch(q: string, mature: boolean, source: SourceKey) {
+export function useSearch(q: string, mature: boolean, source: SourceKey, enabled = true) {
   const term = q.trim();
   return useQuery({
     queryKey: ["search", source, mature, term.toLowerCase()],
     queryFn: () => api<Page<TitleSummary>>(`/api/search?q=${enc(term)}&mature=${mature ? 1 : 0}&source=${source}`),
-    enabled: term.length >= 2,
+    enabled: enabled && term.length >= 2,
     staleTime: 30 * MIN,
   });
 }

@@ -109,6 +109,24 @@ describe("MangaDexSource", () => {
     expect(t.chapters[1].group).toBe("Group A");
   });
 
+  test("javascript: externalUrl is dropped; chapter with 0 pages and bad url is removed", async () => {
+    const { src } = source({
+      [`/manga/${MID}/feed`]: { result: "ok", limit: 500, offset: 0, total: 3, data: [
+        chapter("ok", "1"),
+        chapter("bad", "2", { pages: 0, externalUrl: "javascript:alert(1)" }),
+        chapter("none", "3", { pages: 0, externalUrl: null }),
+      ] },
+      [`/manga/${MID}?`]: { result: "ok", data: manga() },
+    });
+    const t = await src.title(MID);
+    expect(t.chapters.map((c) => c.id)).toEqual(["ok"]);
+  });
+
+  test("chapter rejects non-uuid title id", async () => {
+    const { src } = source({});
+    await expect(src.chapter("nope", CID)).rejects.toThrow();
+  });
+
   test("description may be an empty array", async () => {
     const { src } = source({
       [`/manga/${MID}/feed`]: { result: "ok", limit: 500, offset: 0, total: 0, data: [] },

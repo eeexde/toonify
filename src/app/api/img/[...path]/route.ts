@@ -5,7 +5,13 @@ import { getSourceService } from "@/lib/source/service-instance";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
-  const target = parseImgPath(path.map((p) => decodeURIComponent(p)));
+  let segs: string[];
+  try {
+    segs = path.map((p) => decodeURIComponent(p));
+  } catch {
+    return new Response("Bad request", { status: 400 });
+  }
+  const target = parseImgPath(segs);
   if (!target) return new Response("Bad request", { status: 400 });
   const service = getSourceService();
   return proxyImage(target, {

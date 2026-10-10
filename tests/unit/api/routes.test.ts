@@ -46,6 +46,19 @@ describe("api routes", () => {
     const res = await GET(req("/x"), { params: Promise.resolve({ titleId: "mock:alpha", chapterId: "1" }) });
     expect((await res.json()).data.pages).toHaveLength(5);
   });
+  test("malformed percent-encoding -> 400", async () => {
+    const ch = await import("@/app/api/chapter/[titleId]/[chapterId]/route");
+    expect((await ch.GET(req("/x"), { params: Promise.resolve({ titleId: "mock:alpha", chapterId: "%E0%A4%A" }) })).status).toBe(400);
+    const img = await import("@/app/api/img/[...path]/route");
+    expect((await img.GET(req("/x"), { params: Promise.resolve({ path: ["md", "%E0%A4%A", "a.jpg"] }) })).status).toBe(400);
+    const ti = await import("@/app/api/title/[titleId]/route");
+    expect((await ti.GET(req("/x"), { params: Promise.resolve({ titleId: "%E0%A4%A" }) })).status).toBe(400);
+  });
+  test("title id is decoded exactly once", async () => {
+    const { GET } = await import("@/app/api/title/[titleId]/route");
+    // "%253A" decodes once to "%3A", which is not a valid prefixed id
+    expect((await GET(req("/x"), { params: Promise.resolve({ titleId: "mock%253Aalpha" }) })).status).toBe(400);
+  });
   test("upstream failure -> 502", async () => {
     vi.spyOn(MockSource.prototype, "home").mockRejectedValueOnce(new (await import("@/lib/source/errors")).UpstreamError("down"));
     const { GET } = await import("@/app/api/home/route");

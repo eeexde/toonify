@@ -34,8 +34,16 @@ describe("backup", () => {
     ["bad row", { version: 1, exportedAt: 1, library: [{ titleId: 5 }], history: [], progress: [], settings: [] }],
     ["bad setting value", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: "abc" }] }],
     ["bad theme", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "theme", value: "neon" }] }],
+    ["mature string", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "mature", value: "no" }] }],
+    ["unknown source", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "source", value: "xyz" }] }],
+    ["readerWidth object", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: {} }] }],
+    ["readerWidth out of range", { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [{ key: "readerWidth", value: 100000 }] }],
+    ["negative pageIndex", { version: 1, exportedAt: 1, library: [{ titleId: "t", title: "T", cover: "c", addedAt: 1 }], history: [], progress: [{ titleId: "t", chapterId: "c", pageIndex: -1, scrollRatio: 0.5, completed: false, updatedAt: 1 }], settings: [] }],
+    ["scrollRatio 2", { version: 1, exportedAt: 1, library: [{ titleId: "t", title: "T", cover: "c", addedAt: 1 }], history: [], progress: [{ titleId: "t", chapterId: "c", pageIndex: 0, scrollRatio: 2, completed: false, updatedAt: 1 }], settings: [] }],
   ])("rejects %s without writing", async (_n, input) => {
     await expect(importData(d, input)).rejects.toThrow(ImportError);
     expect(await d.library.count()).toBe(0);
+    expect(await d.progress.count()).toBe(0);
+    expect(await d.settings.count()).toBe(0);
   });
 });

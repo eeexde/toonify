@@ -2,24 +2,25 @@
 import { useEffect, useRef } from "react";
 import { db } from "@/lib/db/schema";
 import { saveProgress } from "@/lib/db/actions";
-import { currentPageIndex, scrollRatio, THRESHOLDS } from "@/lib/reader/progress";
+import { createTracker, currentPageIndex, scrollRatio } from "@/lib/reader/progress";
 
 interface Args {
   titleId: string;
   chapterId: string;
   pageCount: number;
   onPrefetch: () => void;
-  onComplete: () => void;
+  onComplete: () => boolean;
   onScrollDown: () => void;
+  onProgress?: (ratio: number) => void;
 }
 
 function pageTops(): number[] {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-page-index]")).map((el) => el.getBoundingClientRect().top);
 }
 
-export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, onComplete, onScrollDown }: Args) {
-  const cb = useRef({ onPrefetch, onComplete, onScrollDown });
-  cb.current = { onPrefetch, onComplete, onScrollDown };
+export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, onComplete, onScrollDown, onProgress }: Args) {
+  const cb = useRef({ onPrefetch, onComplete, onScrollDown, onProgress });
+  cb.current = { onPrefetch, onComplete, onScrollDown, onProgress };
 
   // Restore saved position once pages are rendered.
   useEffect(() => {
@@ -40,32 +41,32 @@ export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, o
   // Track scroll, thresholds and periodic saves.
   useEffect(() => {
     if (pageCount === 0) return;
-    let prefetched = false;
-    let completed = false;
-    let dirty = false;
-    let lastY = window.scrollY;
-
-    const ratio = () => scrollRatio(window.scrollY, document.documentElement.scrollHeight, window.innerHeight);
-    const save = () => {
-      if (!dirty) return;
-      dirty = false;
-      void saveProgress(db, { titleId, chapterId, pageIndex: currentPageIndex(pageTops()), scrollRatio: ratio() });
-    };
+    const tracker = createTracker({
+      pageCount,
+      initialY: window.scrollY,
+      measure: () => {
+        const y = window.scrollY;
+        return {
+          y,
+          pageIndex: currentPageIndex(pageTops()),
+          ratio: scrollRatio(y, document.documentElement.scrollHeight, window.innerHeight),
+        };
+      },
+      persist: (s) => void saveProgress(db, { titleId, chapterId, pageIndex: s.pageIndex, scrollRatio: s.ratio }),
+      onPrefetch: () => cb.current.onPrefetch(),
+      onComplete: () => cb.current.onComplete(),
+      onScrollDown: () => cb.current.onScrollDown(),
+    });
+    let raf = 0;
     const onScroll = () => {
-      dirty = true;
-      const y = window.scrollY;
-      if (y > lastY + 10) cb.current.onScrollDown();
-      lastY = y;
-      const r = ratio();
-      if (!prefetched && r >= THRESHOLDS.prefetch) {
-        prefetched = true;
-        cb.current.onPrefetch();
-      }
-      if (!completed && r >= THRESHOLDS.complete && y > 0) {
-        completed = true;
-        cb.current.onComplete();
-      }
+      if (tracker.unmounting || raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        tracker.update();
+        cb.current.onProgress?.(tracker.snapshot.ratio);
+      });
     };
+    const save = () => tracker.save();
     const onHide = () => {
       if (document.visibilityState === "hidden") save();
     };
@@ -75,7 +76,8 @@ export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, o
     window.addEventListener("pagehide", save);
     const timer = setInterval(save, 2000);
     return () => {
-      save();
+      tracker.dispose();
+      if (raf) cancelAnimationFrame(raf);
       clearInterval(timer);
       window.removeEventListener("scroll", onScroll);
       document.removeEventListener("visibilitychange", onHide);

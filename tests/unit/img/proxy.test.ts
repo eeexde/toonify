@@ -72,6 +72,21 @@ describe("proxyImage", () => {
     expect(fetch.mock.calls.every((c) => String(c[0]).startsWith("https://uploads.mangadex.org/"))).toBe(true);
   });
 
+  test("fetch uses redirect:error, 10s timeout signal; response has nosniff", async () => {
+    const fetch = vi.fn().mockResolvedValue(img());
+    const res = await proxyImage({ kind: "md", chapterId: CID, file: "1-a.jpg" }, { atHome: async () => atHomeOk, fetch, mockEnabled: false });
+    expect(fetch.mock.calls[0][1]).toMatchObject({ redirect: "error" });
+    expect(res.headers.get("X-Content-Type-Options")).toBe("nosniff");
+  });
+
+  test("non-image content-type is never passed through", async () => {
+    const html = () => new Response("<script>alert(1)</script>", { status: 200, headers: { "Content-Type": "text/html" } });
+    const fetch = vi.fn().mockImplementation(async () => html());
+    const res = await proxyImage({ kind: "md", chapterId: CID, file: "1-a.jpg" }, { atHome: async () => atHomeOk, fetch, mockEnabled: false });
+    expect(res.status).toBe(502);
+    expect(res.headers.get("Content-Type")).not.toBe("text/html");
+  });
+
   test("mock disabled -> 404, enabled -> svg", async () => {
     const t = { kind: "mock-cover", slug: "alpha" } as const;
     expect((await proxyImage(t, { atHome: vi.fn(), mockEnabled: false })).status).toBe(404);

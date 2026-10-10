@@ -13,7 +13,8 @@ function SearchInner() {
   const params = useSearchParams();
   const [input, setInput] = useState(params.get("q") ?? "");
   const [term, setTerm] = useState(input);
-  const settings = useSettings() ?? DEFAULT_SETTINGS;
+  const stored = useSettings();
+  const settings = stored ?? DEFAULT_SETTINGS;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -24,7 +25,7 @@ function SearchInner() {
     return () => clearTimeout(t);
   }, [input, router]);
 
-  const q = useSearch(term, settings.mature, settings.source);
+  const q = useSearch(term, settings.mature, settings.source, stored !== undefined);
   const short = term.trim().length < 2;
 
   return (

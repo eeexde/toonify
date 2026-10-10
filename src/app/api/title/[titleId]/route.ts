@@ -6,7 +6,7 @@ import { getSourceService } from "@/lib/source/service-instance";
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ titleId: string }> }) {
   const { titleId } = await params;
   try {
-    return jsonResult(await getSourceService().title(decodeURIComponent(titleId)), POLICIES.title);
+    return jsonResult(await getSourceService().title(titleId), POLICIES.title);
   } catch (err) {
     return errorResponse(err);
   }

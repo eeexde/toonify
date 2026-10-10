@@ -28,6 +28,14 @@ function parse<T extends z.ZodType>(schema: T, body: unknown): z.infer<T> {
   return r.data;
 }
 
+export function mdChapterPages(rawId: string, chapterId: string, ah: AtHome): ChapterPages {
+  return {
+    titleId: encodeId("md", rawId),
+    chapterId,
+    pages: ah.files.map((f) => `/api/img/md/${chapterId}/${f}`),
+  };
+}
+
 export class MangaDexSource implements Source {
   private base: string;
   private buckets: { general: TokenBucket; atHome: TokenBucket };
@@ -99,11 +107,7 @@ export class MangaDexSource implements Source {
   }
 
   async chapter(rawId: string, chapterId: string): Promise<ChapterPages> {
-    const ah = await this.atHome(chapterId);
-    return {
-      titleId: encodeId("md", rawId),
-      chapterId,
-      pages: ah.files.map((f) => `/api/img/md/${chapterId}/${f}`),
-    };
+    if (!UUID_RE.test(rawId)) throw new InvalidIdError();
+    return mdChapterPages(rawId, chapterId, await this.atHome(chapterId));
   }
 }

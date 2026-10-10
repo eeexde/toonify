@@ -1,8 +1,9 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "@/lib/query/fetcher";
 import { chapterQueryOptions, useChapter, useTitle } from "@/lib/query/hooks";
 import { useSettings } from "@/lib/db/hooks";
 import { markCompleted, recordOpen } from "@/lib/db/actions";
@@ -22,6 +23,7 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
   const titleQ = useTitle(titleId);
   const chapterQ = useChapter(titleId, chapterId);
   const [overlay, setOverlay] = useState(true);
+  const [progress, setProgress] = useState(0);
 
   const t = titleQ.data;
   const chapters = t?.chapters ?? [];
@@ -44,13 +46,15 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
     });
   }, [next, qc, titleId]);
 
-  const onComplete = useCallback(() => {
-    if (t && current) void markCompleted(db, { titleId, title: t.title, cover: t.cover, chapterId, chapterName: current.name });
+  const onComplete = useCallback((): boolean => {
+    if (!t || !current) return false;
+    void markCompleted(db, { titleId, title: t.title, cover: t.cover, chapterId, chapterName: current.name });
+    return true;
   }, [t, current, titleId, chapterId]);
 
   const onScrollDown = useCallback(() => setOverlay(false), []);
 
-  useReaderTracking({ titleId, chapterId, pageCount: pages.length, onPrefetch, onComplete, onScrollDown });
+  useReaderTracking({ titleId, chapterId, pageCount: pages.length, onPrefetch, onComplete, onScrollDown, onProgress: setProgress });
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -67,6 +71,7 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
     if (e.clientX > w / 3 && e.clientX < (2 * w) / 3) setOverlay((v) => !v);
   };
 
+  if (chapterQ.isError && chapterQ.error instanceof ApiError && (chapterQ.error.status === 404 || chapterQ.error.status === 400)) notFound();
   if (chapterQ.isError) {
     return <ErrorState message={chapterQ.error.message} onRetry={() => chapterQ.refetch()} />;
   }
@@ -75,6 +80,7 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
     <div className="-mx-4 -mt-4 min-h-dvh bg-black">
       <ReaderOverlay
         visible={overlay}
+        progress={progress}
         titleId={titleId}
         title={t?.title ?? ""}
         chapterId={chapterId}

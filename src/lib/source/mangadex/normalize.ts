@@ -31,6 +31,15 @@ export function toSummary(m: MdManga): TitleSummary {
   };
 }
 
+function httpUrl(u: string | null | undefined): string | undefined {
+  return u && /^https?:\/\//i.test(u) ? u : undefined;
+}
+
+/** A chapter with no pages and no usable external link cannot be read anywhere. */
+export function isUsableChapter(c: MdChapter): boolean {
+  return c.attributes.pages > 0 || httpUrl(c.attributes.externalUrl) !== undefined;
+}
+
 export function toChapter(c: MdChapter): Chapter {
   const a = c.attributes;
   const group = c.relationships.find((r) => r.type === "scanlation_group")?.attributes?.name;
@@ -42,7 +51,7 @@ export function toChapter(c: MdChapter): Chapter {
     name,
     date: a.readableAt ?? a.publishAt,
     group: typeof group === "string" ? group : undefined,
-    externalUrl: a.pages === 0 && a.externalUrl ? a.externalUrl : undefined,
+    externalUrl: a.pages === 0 ? httpUrl(a.externalUrl) : undefined,
   };
 }
 
@@ -59,6 +68,6 @@ export function toTitle(m: MdManga, chapters: MdChapter[]): Title {
     artists: relNames(m, "artist"),
     genres: a.tags.map((t) => t.attributes.name.en ?? Object.values(t.attributes.name)[0]).filter(Boolean),
     contentRating: a.contentRating,
-    chapters: sortChapters(chapters.map(toChapter)),
+    chapters: sortChapters(chapters.filter(isUsableChapter).map(toChapter)),
   };
 }

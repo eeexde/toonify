@@ -27,13 +27,15 @@ function ContinueRow() {
 }
 
 export default function HomePage() {
-  const settings = useSettings() ?? DEFAULT_SETTINGS;
-  const q = useHome(settings.mature, settings.source);
+  const stored = useSettings();
+  const settings = stored ?? DEFAULT_SETTINGS;
+  const q = useHome(settings.mature, settings.source, stored !== undefined);
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = q;
   const loadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-  const items = q.data?.pages.flatMap((p) => p.items) ?? [];
+  const seen = new Set<string>();
+  const items = (q.data?.pages.flatMap((p) => p.items) ?? []).filter((it) => !seen.has(it.id) && !!seen.add(it.id));
 
   return (
     <>
