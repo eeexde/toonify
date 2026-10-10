@@ -1,7 +1,7 @@
 "use client";
 import { infiniteQueryOptions, queryOptions, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import type { SourceKey } from "../source/ids";
-import type { ChapterPages, Page, Title, TitleSummary } from "../source/types";
+import type { ChapterPages, FeaturedItem, Page, Title, TitleSummary } from "../source/types";
 import { filtersKey, type Tag } from "../source/filters";
 import { browseApiPath, isSearching, type BrowseState } from "./browse";
 import { api } from "./fetcher";
@@ -29,6 +29,14 @@ export const useTags = (source: SourceKey, enabled = true) =>
     queryKey: ["tags", source],
     queryFn: () => api<Tag[]>(`/api/tags?source=${source}`),
     staleTime: 24 * 60 * MIN,
+    enabled,
+  });
+
+export const useFeatured = (mature: boolean, source: SourceKey, enabled = true) =>
+  useQuery({
+    queryKey: ["featured", source, mature],
+    queryFn: () => api<FeaturedItem[]>(`/api/featured?mature=${mature ? 1 : 0}&source=${source}`),
+    staleTime: 60 * MIN,
     enabled,
   });
 

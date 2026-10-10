@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("browse, open title, read, resume, complete", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByTestId("title-card")).toHaveCount(2);
-  await page.getByText("Skyward Blade").first().click();
+  await page.getByTestId("title-card").filter({ hasText: "Skyward Blade" }).click();
   await expect(page.getByRole("heading", { name: "Skyward Blade" })).toBeVisible();
   await expect(page.getByText("Official ↗")).toBeVisible();
 
@@ -122,4 +122,41 @@ test("branded dropdown: reader chapter picker by mouse and keyboard", async ({ p
   await page.getByRole("button", { name: /^Chapter:/ }).click();
   await page.getByRole("option", { name: /Ch\. 3/ }).click();
   await expect(page).toHaveURL(/\/read\/mock%3Aalpha\/3$/);
+});
+
+test("featured banner: slides, list, pause, view series; hidden while searching", async ({ page }) => {
+  await page.goto("/");
+  const banner = page.getByRole("region", { name: "Featured" });
+  await expect(banner.getByRole("heading", { name: "Featured" })).toBeVisible();
+  const slide = (name: string) => banner.getByRole("group", { name: new RegExp(`featured: ${name}$`), includeHidden: true });
+  await expect(slide("Skyward Blade")).toHaveAttribute("aria-hidden", "false");
+  await expect(banner.getByRole("list", { name: "Featured titles" }).getByRole("listitem")).toHaveCount(2);
+
+  await banner.getByRole("button", { name: "Pause featured slideshow" }).click();
+  await expect(banner.getByRole("button", { name: "Play featured slideshow" })).toBeVisible();
+
+  await banner.getByRole("button", { name: "Next featured" }).click();
+  await expect(slide("Moonlit Bakery")).toHaveAttribute("aria-hidden", "false");
+  await expect(slide("Skyward Blade")).toHaveAttribute("aria-hidden", "true");
+  await banner.getByRole("button", { name: "Show Skyward Blade" }).click();
+  await expect(slide("Skyward Blade")).toHaveAttribute("aria-hidden", "false");
+
+  await slide("Skyward Blade").getByRole("button", { name: "Add Skyward Blade to library" }).click();
+  await expect(slide("Skyward Blade").getByRole("button", { name: "Remove Skyward Blade from library" })).toBeVisible();
+
+  await slide("Skyward Blade").getByRole("link", { name: "View series" }).click();
+  await expect(page.getByRole("heading", { name: "Skyward Blade" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "✓ In library" })).toBeVisible();
+
+  await page.goto("/?q=bak");
+  await expect(page.getByTestId("title-card")).toHaveCount(1);
+  await expect(page.getByRole("region", { name: "Featured" })).toHaveCount(0);
+});
+
+test("featured banner autoplays to the next slide", async ({ page }) => {
+  await page.goto("/");
+  const banner = page.getByRole("region", { name: "Featured" });
+  await expect(banner.getByRole("group", { name: /featured: Skyward Blade$/, includeHidden: true })).toHaveAttribute("aria-hidden", "false");
+  await page.mouse.move(5, 830);
+  await expect(banner.getByRole("group", { name: /featured: Moonlit Bakery$/, includeHidden: true })).toHaveAttribute("aria-hidden", "false", { timeout: 12_000 });
 });

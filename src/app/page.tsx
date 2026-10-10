@@ -14,6 +14,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { Footer } from "@/components/Footer";
 import { EmptyState, buttonSecondary } from "@/components/EmptyState";
 import { FilterBar } from "@/components/Filters";
+import { FeaturedBanner } from "@/components/FeaturedBanner";
 
 function ContinueCard({ h, lead }: { h: HistoryItem; lead: boolean }) {
   const progress = useProgressMap(h.titleId);
@@ -86,6 +87,7 @@ function HomeInner() {
   return (
     <>
       <h1 className="sr-only">Home</h1>
+      {!browsing && <FeaturedBanner mature={settings.mature} source={settings.source} enabled={ready} />}
       {!browsing && <ContinueRow />}
       <section aria-labelledby="latest-h">
         <div className="mb-3 flex items-baseline justify-between gap-3">

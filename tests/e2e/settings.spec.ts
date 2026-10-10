@@ -9,7 +9,7 @@ test("18+ requires confirmation", async ({ page }) => {
   await page.getByRole("button", { name: "I am 18 or older" }).click();
   await expect(page.getByRole("switch", { name: "Show 18+ content" })).toHaveAttribute("aria-checked", "true");
   await page.goto("/");
-  await expect(page.getByText("Crimson Night")).toBeVisible();
+  await expect(page.getByTestId("title-card").filter({ hasText: "Crimson Night" })).toBeVisible();
 });
 
 test("export then import backup; bad file rejected", async ({ page }) => {
