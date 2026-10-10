@@ -1,6 +1,6 @@
 # Toonify
 
-Mobile-first manhwa reader (installable PWA). Data from [MangaDex](https://mangadex.org) with an optional ScraperGo (Toonily) source.
+Mobile-first manhwa & manga reader (installable PWA). Data from [MangaDex](https://mangadex.org) with an optional ScraperGo (Toonily) source for manhwa.
 
 ## Run
 

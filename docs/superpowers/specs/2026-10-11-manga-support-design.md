@@ -28,7 +28,7 @@ Manhwa browsing and the long-strip reader keep working exactly as they do now.
 - `src/lib/source/filters.ts`: add `kind?: "manga" | "manhwa"` to `Filters`, plus `KINDS` const and `effectiveKind(f) => f.kind ?? "manga"`.
 - `parseFilters` reads `kind`; an unknown value is invalid (returns null, as other filters do).
 - `filtersToSearch` writes `kind` only when it is `manhwa`, so manga URLs stay clean (`/` = manga, `/?kind=manhwa` = manhwa).
-- `filtersKey` **always** includes the effective kind (`k=manga` / `k=manhwa`). Today's unfiltered cache keys hold Korean results; once the default flips, those keys must not be served as manga. Always keying on kind lets the old entries expire unused.
+- `filtersKey` adds `k=manhwa` only for manhwa (so client query keys and unfiltered URLs stay clean). `SourceService` puts the effective kind into **every** list and featured cache key (`v1:md:home:manga:1:0`), so today's Korean-only entries are never served as manga and simply expire.
 - `hasFilters` ignores `kind` (the toggle is not a "filter is active" state for the clear-filters UI).
 
 ### MangaDex
