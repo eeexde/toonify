@@ -3,6 +3,7 @@ import { POLICIES } from "../cache/policies";
 import { InvalidIdError } from "./errors";
 import { decodeId, type SourceKey } from "./ids";
 import { mdChapterPages, UUID_RE, type AtHome, type MangaDexSource } from "./mangadex";
+import { filtersKey, type Filters, type Tag } from "./filters";
 import type { ChapterPages, Page, Source, Title, TitleId, TitleSummary } from "./types";
 
 export class SourceService {
@@ -24,19 +25,29 @@ export class SourceService {
     return this.get(key && this.deps.sources[key] ? key : undefined);
   }
 
-  async home(page: number, mature: boolean, source?: SourceKey): Promise<CachedResult<Page<TitleSummary>>> {
+  async home(page: number, mature: boolean, source?: SourceKey, filters: Filters = {}): Promise<CachedResult<Page<TitleSummary>>> {
     const { key, src } = this.list(source);
-    return this.deps.cache.cached(`v1:${key}:home:${page}:${mature ? 1 : 0}`, POLICIES.home, () => src.home(page, { mature }));
+    return this.deps.cache.cached(`v1:${key}:home:${page}:${mature ? 1 : 0}${suffix(filters)}`, POLICIES.home, () =>
+      src.home(page, { mature, ...filters }),
+    );
   }
 
-  async search(q: string, page: number, mature: boolean, source?: SourceKey): Promise<CachedResult<Page<TitleSummary>>> {
+  async search(q: string, page: number, mature: boolean, source?: SourceKey, filters: Filters = {}): Promise<CachedResult<Page<TitleSummary>>> {
     const { key, src } = this.list(source);
     const norm = q.trim().replace(/\s+/g, " ");
     return this.deps.cache.cached(
-      `v1:${key}:search:${encodeURIComponent(norm.toLowerCase())}:${page}:${mature ? 1 : 0}`,
+      `v1:${key}:search:${encodeURIComponent(norm.toLowerCase())}:${page}:${mature ? 1 : 0}${suffix(filters)}`,
       POLICIES.search,
-      () => src.search(norm, page, { mature }),
+      () => src.search(norm, page, { mature, ...filters }),
     );
+  }
+
+  /** Filterable tags for a list source; [] when the source has no filter support. */
+  async tags(source?: SourceKey): Promise<CachedResult<Tag[]>> {
+    const { key, src } = this.list(source);
+    if (!src.tags) return { value: [], stale: false };
+    const tags = src.tags.bind(src);
+    return this.deps.cache.cached(`v1:${key}:tags`, POLICIES.tags, () => tags());
   }
 
   async title(id: TitleId): Promise<CachedResult<Title>> {
@@ -91,4 +102,10 @@ export class SourceService {
       return out;
     });
   }
+}
+
+/** Cache-key suffix for filters; empty when none are set, so unfiltered keys stay unchanged. */
+function suffix(f: Filters): string {
+  const k = filtersKey(f);
+  return k ? `:${encodeURIComponent(k)}` : "";
 }

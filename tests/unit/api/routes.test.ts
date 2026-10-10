@@ -66,4 +66,22 @@ describe("api routes", () => {
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "Source unavailable" });
   });
+  test("home applies filters from query params", async () => {
+    const { GET } = await import("@/app/api/home/route");
+    const res = await GET(req("/api/home?page=1&mature=1&tags=fantasy&sort=title"));
+    expect((await res.json()).data.items.map((i: { id: string }) => i.id)).toEqual(["mock:alpha"]);
+  });
+  test("invalid filters -> 400", async () => {
+    const { GET } = await import("@/app/api/home/route");
+    expect((await GET(req("/api/home?sort=popular"))).status).toBe(400);
+    const s = await import("@/app/api/search/route");
+    expect((await s.GET(req("/api/search?q=moon&rating=nsfw"))).status).toBe(400);
+  });
+  test("tags route", async () => {
+    const { GET } = await import("@/app/api/tags/route");
+    const res = await GET(req("/api/tags"));
+    expect(res.status).toBe(200);
+    expect((await res.json()).data.map((t: { id: string }) => t.id)).toContain("fantasy");
+    expect((await GET(req("/api/tags?source=zz"))).status).toBe(400);
+  });
 });

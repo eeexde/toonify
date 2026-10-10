@@ -58,7 +58,7 @@ describe("MangaDexSource", () => {
     const page = await src.home(1, { mature: false });
     expect(page).toEqual({
       page: 1, hasMore: true,
-      items: [{ id: `md:${MID}`, title: "Solo Leveling", cover: `/api/img/cover/${MID}/cover.jpg.512.jpg`, badge: undefined }],
+      items: [{ id: `md:${MID}`, title: "Solo Leveling", cover: `/api/img/cover/${MID}/cover.jpg.512.jpg`, badge: undefined, status: "completed" }],
     });
     const u = new URL(calls[0]);
     expect(u.searchParams.getAll("contentRating[]")).toEqual(["safe", "suggestive"]);
@@ -143,6 +143,51 @@ describe("MangaDexSource", () => {
       titleId: `md:${MID}`, chapterId: CID,
       pages: [`/api/img/md/${CID}/1-a.jpg`, `/api/img/md/${CID}/2-b.jpg`],
     });
+  });
+
+  test("filters: sort, included tags and selected ratings map to MangaDex params", async () => {
+    const { src, calls } = source({ "/manga?": { result: "ok", data: [], limit: 24, offset: 0, total: 0 } });
+    const TAG = "391b0423-d847-456f-aff0-8b0cfc03066b";
+    await src.home(1, { mature: false, sort: "follows", tags: [TAG], ratings: ["suggestive", "erotica"] });
+    const u = new URL(calls[0]);
+    expect(u.searchParams.get("order[followedCount]")).toBe("desc");
+    expect(u.searchParams.get("order[latestUploadedChapter]")).toBeNull();
+    expect(u.searchParams.getAll("includedTags[]")).toEqual([TAG]);
+    expect(u.searchParams.getAll("contentRating[]")).toEqual(["suggestive"]);
+  });
+
+  test.each([
+    ["latest", "order[latestUploadedChapter]", "desc"],
+    ["newest", "order[createdAt]", "desc"],
+    ["title", "order[title]", "asc"],
+  ] as const)("sort %s -> %s=%s", async (sort, key, dir) => {
+    const { src, calls } = source({ "/manga?": { result: "ok", data: [], limit: 24, offset: 0, total: 0 } });
+    await src.search("x", 1, { mature: false, sort });
+    expect(new URL(calls[0]).searchParams.get(key)).toBe(dir);
+    expect(new URL(calls[0]).searchParams.get("order[relevance]")).toBeNull();
+  });
+
+  test("relevance without a query falls back to latest", async () => {
+    const { src, calls } = source({ "/manga?": { result: "ok", data: [], limit: 24, offset: 0, total: 0 } });
+    await src.home(1, { mature: false, sort: "relevance" });
+    expect(new URL(calls[0]).searchParams.get("order[latestUploadedChapter]")).toBe("desc");
+  });
+
+  test("ratings clipped to nothing -> empty page without an upstream call", async () => {
+    const { src, calls } = source({});
+    expect(await src.home(1, { mature: false, ratings: ["pornographic"] })).toEqual({ items: [], page: 1, hasMore: false });
+    expect(calls).toHaveLength(0);
+  });
+
+  test("tags lists MangaDex tags with groups", async () => {
+    const { src } = source({ "/manga/tag": { result: "ok", data: [
+      { id: "t1", type: "tag", attributes: { name: { en: "Romance" }, group: "genre" } },
+      { id: "t2", type: "tag", attributes: { name: { en: "Monsters" }, group: "theme" } },
+    ] } });
+    expect(await src.tags()).toEqual([
+      { id: "t2", name: "Monsters", group: "theme" },
+      { id: "t1", name: "Romance", group: "genre" },
+    ].sort((a, b) => a.name.localeCompare(b.name)));
   });
 
   test("schema drift -> UpstreamError", async () => {

@@ -11,4 +11,5 @@ export const POLICIES = {
   chapter: { fresh: 30 * DAY, stale: 90 * DAY },
   atHome: { fresh: 10 * MIN, stale: 0 },
   health: { fresh: MIN, stale: 0 },
+  tags: { fresh: DAY, stale: 30 * DAY },
 } satisfies Record<string, CachePolicy>;

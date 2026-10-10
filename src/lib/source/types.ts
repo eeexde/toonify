@@ -1,3 +1,5 @@
+import type { Filters, Tag } from "./filters";
+
 export type TitleId = string;
 export type ChapterId = string;
 
@@ -7,6 +9,8 @@ export interface TitleSummary {
   cover: string;
   latest?: { label: string; date?: string }[];
   badge?: string;
+  /** Series publication status, e.g. "ongoing", "completed", "hiatus", "cancelled". */
+  status?: string;
 }
 
 export interface Page<T> {
@@ -44,7 +48,7 @@ export interface ChapterPages {
   pages: string[];
 }
 
-export interface ListOpts {
+export interface ListOpts extends Filters {
   mature: boolean;
 }
 
@@ -54,4 +58,6 @@ export interface Source {
   search(q: string, page: number, opts: ListOpts): Promise<Page<TitleSummary>>;
   title(rawId: string): Promise<Title>;
   chapter(rawId: string, chapterId: ChapterId): Promise<ChapterPages>;
+  /** Filterable tags. Sources without it do not support sort/tag/rating filters. */
+  tags?(): Promise<Tag[]>;
 }

@@ -1,6 +1,7 @@
 import { sortChapters } from "../chapters";
 import { NotFoundError } from "../errors";
 import { encodeId } from "../ids";
+import { effectiveRatings, type Tag } from "../filters";
 import type { Chapter, ChapterPages, ListOpts, Page, Source, Title, TitleSummary } from "../types";
 import { MOCK_PAGES_PER_CHAPTER, MOCK_TITLES, type MockTitle } from "./fixtures";
 
@@ -10,6 +11,7 @@ function summary(t: MockTitle): TitleSummary {
     title: t.title,
     cover: `/api/img/mock/cover/${t.slug}`,
     badge: t.rating === "erotica" ? "18+" : undefined,
+    status: t.status,
   };
 }
 
@@ -22,6 +24,8 @@ function chaptersOf(t: MockTitle): Chapter[] {
   return sortChapters(out);
 }
 
+const tagId = (genre: string) => genre.toLowerCase().replace(/\s+/g, "-");
+
 function find(slug: string): MockTitle {
   const t = MOCK_TITLES.find((m) => m.slug === slug);
   if (!t) throw new NotFoundError();
@@ -30,7 +34,18 @@ function find(slug: string): MockTitle {
 
 export class MockSource implements Source {
   private visible(opts: ListOpts) {
-    return MOCK_TITLES.filter((t) => opts.mature || t.rating === "safe");
+    const ratings = effectiveRatings(opts.mature, opts.ratings);
+    const out = MOCK_TITLES.filter(
+      (t) => ratings.includes(t.rating) && (opts.tags ?? []).every((id) => t.genres.some((g) => tagId(g) === id)),
+    );
+    if (opts.sort === "title") return [...out].sort((a, b) => a.title.localeCompare(b.title));
+    if (opts.sort === "newest") return [...out].reverse();
+    return out;
+  }
+
+  async tags(): Promise<Tag[]> {
+    const genres = [...new Set(MOCK_TITLES.flatMap((t) => t.genres))];
+    return genres.map((g) => ({ id: tagId(g), name: g, group: "genre" })).sort((a, b) => a.id.localeCompare(b.id));
   }
 
   async home(page: number, opts: ListOpts): Promise<Page<TitleSummary>> {

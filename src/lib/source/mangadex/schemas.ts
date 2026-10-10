@@ -26,6 +26,11 @@ const Collection = <T extends z.ZodType>(item: T) =>
   z.object({ result: z.literal("ok"), data: z.array(item), limit: z.number(), offset: z.number(), total: z.number() });
 
 export const MangaListSchema = Collection(MangaSchema);
+
+export const TagListSchema = z.object({
+  result: z.literal("ok"),
+  data: z.array(z.object({ id: z.string(), attributes: z.object({ name: Loc, group: z.string() }) })),
+});
 export const MangaEntitySchema = z.object({ result: z.literal("ok"), data: MangaSchema });
 
 export const ChapterSchema = z.object({

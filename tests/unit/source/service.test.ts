@@ -33,6 +33,27 @@ describe("SourceService", () => {
     expect((await s.home(1, false, "md")).value.items.map((i) => i.id)).toEqual(["mock:alpha", "mock:beta"]);
     expect((await s.search("bakery", 1, false, "sg")).value.items).toHaveLength(1);
   });
+  test("filters are part of the cache key and reach the source", async () => {
+    const mock = new MockSource();
+    const home = vi.spyOn(mock, "home");
+    const s = new SourceService({ sources: { mock }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
+    await s.home(1, true, undefined, { tags: ["fantasy"] });
+    await s.home(1, true, undefined, { tags: ["fantasy"] });
+    const r = await s.home(1, true, undefined, { tags: ["romance"] });
+    expect(home).toHaveBeenCalledTimes(2);
+    expect(home).toHaveBeenLastCalledWith(1, { mature: true, tags: ["romance"] });
+    expect(r.value.items.map((i) => i.id)).toEqual(["mock:gamma"]);
+  });
+  test("tags: cached per source; sources without tags -> []", async () => {
+    const mock = new MockSource();
+    const tags = vi.spyOn(mock, "tags");
+    const sg = { home: vi.fn(), search: vi.fn(), title: vi.fn(), chapter: vi.fn() };
+    const s = new SourceService({ sources: { mock, sg }, cache: createCache(new MemoryLRUStore()), defaultSource: "mock" });
+    expect((await s.tags()).value.length).toBe(4);
+    await s.tags();
+    expect(tags).toHaveBeenCalledTimes(1);
+    expect((await s.tags("sg")).value).toEqual([]);
+  });
   test("enabledSources", () => {
     expect(svc().s.enabledSources()).toEqual(["mock"]);
   });

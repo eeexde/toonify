@@ -4,12 +4,20 @@ import { UpstreamError, InvalidIdError } from "../errors";
 import type { FetchJson } from "../http";
 import { encodeId } from "../ids";
 import { LIMITERS } from "../limiters";
+import { effectiveRatings, type SortKey, type Tag } from "../filters";
 import type { ChapterPages, ListOpts, Page, Source, Title, TitleSummary } from "../types";
 import { toSummary, toTitle } from "./normalize";
-import { AtHomeSchema, FeedSchema, MangaEntitySchema, MangaListSchema, type MdChapter } from "./schemas";
+import { AtHomeSchema, FeedSchema, MangaEntitySchema, MangaListSchema, TagListSchema, type MdChapter } from "./schemas";
 
 export const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGE_SIZE = 24;
+const ORDER: Record<SortKey, [string, "asc" | "desc"]> = {
+  latest: ["latestUploadedChapter", "desc"],
+  relevance: ["relevance", "desc"],
+  follows: ["followedCount", "desc"],
+  newest: ["createdAt", "desc"],
+  title: ["title", "asc"],
+};
 const FEED_LIMIT = 500;
 const MAX_FEED_PAGES = 10;
 
@@ -45,7 +53,7 @@ export class MangaDexSource implements Source {
     this.buckets = deps.buckets ?? { general: LIMITERS.mdGeneral, atHome: LIMITERS.mdAtHome };
   }
 
-  private listParams(page: number, opts: ListOpts): URLSearchParams {
+  private listParams(page: number, opts: ListOpts, ratings: string[], hasQuery: boolean): URLSearchParams {
     const p = new URLSearchParams();
     p.append("originalLanguage[]", "ko");
     p.append("availableTranslatedLanguage[]", "en");
@@ -53,9 +61,11 @@ export class MangaDexSource implements Source {
     p.append("includes[]", "cover_art");
     p.set("limit", String(PAGE_SIZE));
     p.set("offset", String((page - 1) * PAGE_SIZE));
-    for (const r of ["safe", "suggestive", ...(opts.mature ? ["erotica", "pornographic"] : [])]) {
-      p.append("contentRating[]", r);
-    }
+    for (const r of ratings) p.append("contentRating[]", r);
+    for (const t of opts.tags ?? []) p.append("includedTags[]", t);
+    const sort: SortKey = opts.sort === "relevance" && !hasQuery ? "latest" : opts.sort ?? (hasQuery ? "relevance" : "latest");
+    const [key, dir] = ORDER[sort];
+    p.set(`order[${key}]`, dir);
     return p;
   }
 
@@ -64,17 +74,28 @@ export class MangaDexSource implements Source {
     return { items: body.data.map(toSummary), page, hasMore: body.offset + body.limit < body.total };
   }
 
-  home(page: number, opts: ListOpts) {
-    const p = this.listParams(page, opts);
-    p.set("order[latestUploadedChapter]", "desc");
+  private async browse(q: string | undefined, page: number, opts: ListOpts): Promise<Page<TitleSummary>> {
+    const ratings = effectiveRatings(opts.mature, opts.ratings);
+    // MangaDex treats an empty contentRating list as its default set, so an empty selection must not reach it.
+    if (ratings.length === 0) return { items: [], page, hasMore: false };
+    const p = this.listParams(page, opts, ratings, !!q);
+    if (q) p.set("title", q);
     return this.list(p, page);
   }
 
+  home(page: number, opts: ListOpts) {
+    return this.browse(undefined, page, opts);
+  }
+
   search(q: string, page: number, opts: ListOpts) {
-    const p = this.listParams(page, opts);
-    p.set("title", q);
-    p.set("order[relevance]", "desc");
-    return this.list(p, page);
+    return this.browse(q, page, opts);
+  }
+
+  async tags(): Promise<Tag[]> {
+    const body = parse(TagListSchema, await this.deps.fetchJson(`${this.base}/manga/tag`, this.buckets.general));
+    return body.data
+      .map((t) => ({ id: t.id, name: t.attributes.name.en ?? Object.values(t.attributes.name)[0] ?? t.id, group: t.attributes.group }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }
 
   async title(rawId: string): Promise<Title> {

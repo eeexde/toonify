@@ -28,6 +28,7 @@ export function toSummary(m: MdManga): TitleSummary {
     title: pickTitle(m),
     cover: coverUrl(m),
     badge: MATURE.has(m.attributes.contentRating) ? "18+" : undefined,
+    status: m.attributes.status ?? undefined,
   };
 }
 
