@@ -1,6 +1,6 @@
 import { encodeId } from "../ids";
 import { sortChapters } from "../chapters";
-import type { Chapter, FeaturedItem, Title, TitleSummary } from "../types";
+import type { Chapter, FeaturedItem, Layout, Title, TitleSummary } from "../types";
 import type { MdChapter, MdManga } from "./schemas";
 
 const MATURE = new Set(["erotica", "pornographic"]);
@@ -77,6 +77,13 @@ export function toChapter(c: MdChapter): Chapter {
   };
 }
 
+/** Korean originals and anything MangaDex tags "Long Strip" read vertically; the rest page by page. */
+export function layoutOf(m: MdManga): Layout {
+  if (m.attributes.originalLanguage === "ko") return "strip";
+  const longStrip = m.attributes.tags.some((t) => t.attributes.group === "format" && t.attributes.name.en === "Long Strip");
+  return longStrip ? "strip" : "paged";
+}
+
 export function toTitle(m: MdManga, chapters: MdChapter[]): Title {
   const a = m.attributes;
   return {
@@ -90,6 +97,7 @@ export function toTitle(m: MdManga, chapters: MdChapter[]): Title {
     artists: relNames(m, "artist"),
     genres: a.tags.map((t) => t.attributes.name.en ?? Object.values(t.attributes.name)[0]).filter(Boolean),
     contentRating: a.contentRating,
+    layout: layoutOf(m),
     chapters: sortChapters(chapters.filter(isUsableChapter).map(toChapter)),
   };
 }
