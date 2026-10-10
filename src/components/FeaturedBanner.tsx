@@ -56,22 +56,28 @@ function Slide({ item, rank, active }: { item: FeaturedItem; rank: number; activ
       inert={!active}
       className={`absolute inset-0 transition-opacity duration-700 ease-out-soft ${active ? "opacity-100" : "pointer-events-none opacity-0"}`}
     >
-      {/* Backdrop: the cover, blurred and slowly drifting, under a lamp-coloured wash. */}
+      {/* Phones: the cover itself is the poster. Desktop: the cover, blurred and slowly drifting, beside the sharp one. */}
       <img
         src={item.cover}
         alt=""
         aria-hidden
-        className="absolute inset-0 h-full w-full object-cover opacity-80 blur-2xl motion-safe:animate-[drift_18s_ease-in-out_infinite_alternate]"
+        className="absolute inset-0 h-full w-full object-cover object-[50%_20%] motion-safe:animate-[drift_18s_ease-in-out_infinite_alternate] md:hidden"
+      />
+      <img
+        src={item.cover}
+        alt=""
+        aria-hidden
+        className="absolute inset-0 hidden h-full w-full object-cover opacity-80 blur-2xl motion-safe:animate-[drift_18s_ease-in-out_infinite_alternate] md:block"
       />
       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(120%_90%_at_85%_10%,rgb(255_178_63/0.28),transparent_55%)]" />
-      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0c0910] via-[#0c0910]/70 to-[#0c0910]/20 md:bg-gradient-to-r md:from-[#0c0910] md:via-[#0c0910]/75 md:to-transparent" />
+      <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-[#0c0910] from-25% via-[#0c0910]/75 via-55% to-transparent md:bg-gradient-to-r md:from-[#0c0910] md:from-0% md:via-[#0c0910]/75 md:via-50% md:to-transparent" />
 
       <div className="relative flex h-full items-end gap-4 p-5 pb-9 md:items-center md:gap-8 md:p-9">
         <Link
           href={titleHref(item.id)}
           tabIndex={-1}
           aria-hidden
-          className={`hidden shrink-0 overflow-hidden rounded-xl shadow-[0_24px_48px_-16px_rgb(0_0_0/0.8)] ring-1 ring-white/15 transition duration-700 ease-out-soft sm:block md:w-44 sm:w-32 ${
+          className={`hidden shrink-0 overflow-hidden rounded-xl shadow-[0_24px_48px_-16px_rgb(0_0_0/0.8)] ring-1 ring-white/15 transition duration-700 ease-out-soft md:block md:w-44 ${
             active ? "rotate-[-2deg] opacity-100 motion-safe:translate-y-0" : "rotate-0 opacity-0 motion-safe:translate-y-4"
           }`}
         >
@@ -205,7 +211,7 @@ export function FeaturedBanner({ mature, source, enabled }: { mature: boolean; s
         </div>
 
         {/* The list: numbered on desktop, a thumbnail strip on phones. */}
-        <ol aria-label="Featured titles" className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 md:mx-0 md:max-h-[380px] md:flex-col md:gap-1 md:overflow-y-auto md:px-0">
+        <ol aria-label="Featured titles" className="no-scrollbar -mx-4 flex gap-2.5 overflow-x-auto px-4 md:mx-0 md:max-h-[380px] md:flex-col md:gap-1 md:overflow-y-auto md:px-0 md:pb-6 md:[mask-image:linear-gradient(to_bottom,black_82%,transparent)]">
           {items.map((it, i) => {
             const on = i === current;
             return (
