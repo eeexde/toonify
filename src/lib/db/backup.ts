@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { READER_MODES } from "../reader/mode";
 import { isSourceKey } from "../source/ids";
 import type { ToonifyDB } from "./schema";
 
@@ -12,6 +13,7 @@ const History = z.object({
 const Progress = z.object({
   titleId: z.string(), chapterId: z.string(), pageIndex: z.number().int().min(0), scrollRatio: z.number().min(0).max(1), completed: z.boolean(), updatedAt: z.number(),
 });
+const TitlePref = z.object({ titleId: z.string(), mode: z.enum(READER_MODES) });
 const Setting = z.discriminatedUnion("key", [
   z.object({ key: z.literal("mature"), value: z.boolean() }),
   z.object({ key: z.literal("matureConfirmedAt"), value: z.number() }),
@@ -27,6 +29,8 @@ export const BackupSchema = z.object({
   history: z.array(History).max(10_000),
   progress: z.array(Progress).max(200_000),
   settings: z.array(Setting).max(20),
+  /** Added with manga support; absent in older backups. */
+  titlePrefs: z.array(TitlePref).max(10_000).optional(),
 });
 export type Backup = z.infer<typeof BackupSchema>;
 
@@ -38,8 +42,8 @@ export class ImportError extends Error {
 }
 
 export async function exportData(d: ToonifyDB): Promise<Backup> {
-  const [library, history, progress, settings] = await Promise.all([
-    d.library.toArray(), d.history.toArray(), d.progress.toArray(), d.settings.toArray(),
+  const [library, history, progress, settings, titlePrefs] = await Promise.all([
+    d.library.toArray(), d.history.toArray(), d.progress.toArray(), d.settings.toArray(), d.titlePrefs.toArray(),
   ]);
   return {
     version: 1,
@@ -48,6 +52,7 @@ export async function exportData(d: ToonifyDB): Promise<Backup> {
     history,
     progress,
     settings: settings.filter((s) => Setting.safeParse(s).success) as Backup["settings"],
+    titlePrefs,
   };
 }
 
@@ -55,7 +60,7 @@ export async function importData(d: ToonifyDB, input: unknown) {
   const parsed = BackupSchema.safeParse(input);
   if (!parsed.success) throw new ImportError("This file is not a valid Toonify backup.");
   const b = parsed.data;
-  await d.transaction("rw", d.library, d.history, d.progress, d.settings, async () => {
+  await d.transaction("rw", d.library, d.history, d.progress, d.settings, d.titlePrefs, async () => {
     for (const item of b.library) {
       const cur = await d.library.get(item.titleId);
       await d.library.put(cur ? { ...item, ...cur, lastChapterSeenId: cur.lastChapterSeenId ?? item.lastChapterSeenId } : item);
@@ -69,6 +74,7 @@ export async function importData(d: ToonifyDB, input: unknown) {
       if (!cur || cur.updatedAt < item.updatedAt) await d.progress.put(item);
     }
     for (const s of b.settings) await d.settings.put(s);
+    for (const p of b.titlePrefs ?? []) await d.titlePrefs.put(p);
   });
   return { library: b.library.length, history: b.history.length, progress: b.progress.length };
 }
