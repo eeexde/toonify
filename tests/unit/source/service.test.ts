@@ -36,6 +36,20 @@ describe("SourceService", () => {
   test("enabledSources", () => {
     expect(svc().s.enabledSources()).toEqual(["mock"]);
   });
+  test("mdAtHome refresh only invalidates when the cached baseUrl is the one that failed", async () => {
+    const CID = "1c65098a-7a6e-465b-8733-9d19fae27926";
+    const A = { baseUrl: "https://a.mangadex.network", hash: "h", files: ["1-a.jpg"] };
+    const B = { ...A, baseUrl: "https://b.mangadex.network" };
+    const atHome = vi.fn().mockResolvedValueOnce(A).mockResolvedValueOnce(B);
+    const md = { atHome } as unknown as import("@/lib/source/mangadex").MangaDexSource;
+    const s = new SourceService({ sources: { md }, cache: createCache(new MemoryLRUStore()), defaultSource: "md" });
+    expect((await s.mdAtHome(CID)).baseUrl).toBe(A.baseUrl);
+    expect((await s.mdAtHome(CID, "https://other.mangadex.network")).baseUrl).toBe(A.baseUrl);
+    expect(atHome).toHaveBeenCalledTimes(1);
+    expect((await s.mdAtHome(CID, A.baseUrl)).baseUrl).toBe(B.baseUrl);
+    expect((await s.mdAtHome(CID, A.baseUrl)).baseUrl).toBe(B.baseUrl);
+    expect(atHome).toHaveBeenCalledTimes(2);
+  });
   test("md chapter reuses the at-home cache (chapter + image lookup -> 1 upstream call)", async () => {
     const MID = "a96676e5-8ae2-425e-b549-7f15dd34a6d8";
     const CID = "1c65098a-7a6e-465b-8733-9d19fae27926";

@@ -59,12 +59,20 @@ export class SourceService {
     return this.deps.cache.cached(key, POLICIES.chapter, () => src.chapter(raw, chapterId));
   }
 
-  async mdAtHome(chapterId: string, refresh = false): Promise<AtHome> {
+  /**
+   * At-home server for a chapter. Pass `failedBaseUrl` after an image fetch from that node failed:
+   * the cache is refreshed only if it still holds that node, so concurrent image failures share one
+   * upstream refresh instead of each spending the at-home rate limit.
+   */
+  async mdAtHome(chapterId: string, failedBaseUrl?: string): Promise<AtHome> {
     const md = this.deps.sources.md as MangaDexSource | undefined;
     if (!md) throw new InvalidIdError("MangaDex is not enabled");
     const key = `v1:md:athome:${chapterId}`;
-    if (refresh) await this.deps.cache.invalidate(key);
-    return (await this.deps.cache.cached(key, POLICIES.atHome, () => md.atHome(chapterId))).value;
+    const load = async () => (await this.deps.cache.cached(key, POLICIES.atHome, () => md.atHome(chapterId))).value;
+    const current = await load();
+    if (!failedBaseUrl || current.baseUrl !== failedBaseUrl) return current;
+    await this.deps.cache.invalidate(key);
+    return load();
   }
 
   health(): Promise<CachedResult<Record<string, "up" | "down">>> {

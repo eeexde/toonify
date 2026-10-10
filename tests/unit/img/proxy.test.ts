@@ -57,10 +57,21 @@ describe("proxyImage", () => {
       .mockResolvedValueOnce(new Response("x", { status: 500 }))
       .mockResolvedValueOnce(img());
     const res = await proxyImage({ kind: "md", chapterId: CID, file: "1-a.jpg" }, { atHome, fetch, mockEnabled: false });
-    expect(atHome).toHaveBeenLastCalledWith(CID, true);
+    expect(atHome).toHaveBeenLastCalledWith(CID, "https://abc.mangadex.network");
     expect(fetch.mock.calls.map((c) => c[0])).toEqual([
       "https://abc.mangadex.network/data/h1/1-a.jpg",
       "https://def.mangadex.network/data/h1/1-a.jpg",
+      "https://uploads.mangadex.org/data/h1/1-a.jpg",
+    ]);
+    expect(res.status).toBe(200);
+  });
+
+  test("refresh returning the same failed node skips it and goes to uploads", async () => {
+    const atHome = vi.fn().mockResolvedValue(atHomeOk);
+    const fetch = vi.fn().mockResolvedValueOnce(new Response("x", { status: 500 })).mockResolvedValueOnce(img());
+    const res = await proxyImage({ kind: "md", chapterId: CID, file: "1-a.jpg" }, { atHome, fetch, mockEnabled: false });
+    expect(fetch.mock.calls.map((c) => c[0])).toEqual([
+      "https://abc.mangadex.network/data/h1/1-a.jpg",
       "https://uploads.mangadex.org/data/h1/1-a.jpg",
     ]);
     expect(res.status).toBe(200);

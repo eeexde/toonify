@@ -8,7 +8,8 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
 const UPLOADS = "https://uploads.mangadex.org";
 
 interface Deps {
-  atHome: (chapterId: string, refresh: boolean) => Promise<AtHome>;
+  /** failedBaseUrl: refresh the at-home server only if the cached one is this node. */
+  atHome: (chapterId: string, failedBaseUrl?: string) => Promise<AtHome>;
   fetch?: typeof fetch;
   mockEnabled: boolean;
 }
@@ -17,10 +18,14 @@ const IMAGE_TYPE = /^image\/(jpeg|png|webp|gif|avif)\b/i;
 
 const notFound = () => new Response("Not found", { status: 404 });
 
-async function tryFetch(url: string, doFetch: typeof fetch): Promise<Response | null> {
+// At-home nodes get a shorter budget so a dead node cannot eat the whole request.
+const NODE_TIMEOUT_MS = 5_000;
+const UPLOADS_TIMEOUT_MS = 10_000;
+
+async function tryFetch(url: string, doFetch: typeof fetch, timeoutMs = UPLOADS_TIMEOUT_MS): Promise<Response | null> {
   if (!isAllowedImageHost(url)) return null;
   try {
-    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(10_000), redirect: "error" });
+    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
     if (res.ok && res.body && IMAGE_TYPE.test(res.headers.get("Content-Type") ?? "")) return res;
     await res.body?.cancel().catch(() => {});
     return null;
@@ -59,17 +64,19 @@ export async function proxyImage(t: ImgTarget, deps: Deps): Promise<Response> {
 
   let ah: AtHome;
   try {
-    ah = await deps.atHome(t.chapterId, false);
+    ah = await deps.atHome(t.chapterId);
   } catch {
     return new Response("Source unavailable", { status: 502 });
   }
   if (!ah.files.includes(t.file)) return notFound();
 
-  let res = await tryFetch(`${ah.baseUrl}/data/${ah.hash}/${t.file}`, doFetch);
+  let res = await tryFetch(`${ah.baseUrl}/data/${ah.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS);
   if (!res) {
     try {
-      const fresh = await deps.atHome(t.chapterId, true);
-      res = await tryFetch(`${fresh.baseUrl}/data/${fresh.hash}/${t.file}`, doFetch);
+      const fresh = await deps.atHome(t.chapterId, ah.baseUrl);
+      if (fresh.baseUrl !== ah.baseUrl) {
+        res = await tryFetch(`${fresh.baseUrl}/data/${fresh.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS);
+      }
     } catch {
       res = null;
     }

@@ -15,7 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   if (!target) return new Response("Bad request", { status: 400 });
   const service = getSourceService();
   return proxyImage(target, {
-    atHome: (chapterId, refresh) => service.mdAtHome(chapterId, refresh),
+    atHome: (chapterId, failedBaseUrl) => service.mdAtHome(chapterId, failedBaseUrl),
     mockEnabled: process.env.SOURCE_MODE === "mock",
   });
 }
