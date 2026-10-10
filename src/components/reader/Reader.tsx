@@ -115,7 +115,6 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
         />
       ) : (
         <PagedView
-          key={mode}
           titleId={titleId}
           chapterId={chapterId}
           pages={pages}

@@ -113,9 +113,10 @@ test("switching paged direction keeps the current page", async ({ page }) => {
   await expect(shown(page)).toHaveAttribute("data-page-index", "2");
   const vp = page.viewportSize()!;
   const modeBtn = page.getByRole("button", { name: /^Reading mode:/ });
-  if (!(await modeBtn.isVisible())) await page.mouse.click(vp.width / 2, vp.height / 2);
+  if (await modeBtn.evaluate((el) => getComputedStyle(el).pointerEvents === "none")) await page.mouse.click(vp.width / 2, vp.height / 2);
   await modeBtn.click();
   await page.getByRole("option", { name: "Paged, left to right" }).click();
+  await expect(modeBtn).toHaveAccessibleName("Reading mode: Paged, left to right");
   await expect(shown(page)).toHaveAttribute("data-page-index", "2");
   await page.keyboard.press("ArrowRight"); // ltr: right = next
   await expect(shown(page)).toHaveAttribute("data-page-index", "3");
