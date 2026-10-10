@@ -6,7 +6,7 @@ export function ReaderPage({ src, index, eager }: { src: string; index: number; 
   const [attempt, setAttempt] = useState(0);
   const url = attempt === 0 ? src : `${src}${src.includes("?") ? "&" : "?"}retry=${attempt}`;
   return (
-    <div data-page-index={index} className={state === "ok" ? "" : "relative aspect-[2/3] w-full bg-card"}>
+    <div data-page-index={index} className={state === "ok" ? "" : "relative aspect-[2/3] w-full bg-neutral-950"}>
       {state !== "error" && (
         <img
           key={url}
@@ -20,8 +20,13 @@ export function ReaderPage({ src, index, eager }: { src: string; index: number; 
           draggable={false}
         />
       )}
+      {state === "loading" && (
+        <span aria-hidden className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-neutral-700">
+          {index + 1}
+        </span>
+      )}
       {state === "error" && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-sm text-muted">
+        <div role="alert" className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-sm text-neutral-300">
           <p>Page {index + 1} failed to load.</p>
           <button
             onClick={(e) => {
@@ -29,7 +34,7 @@ export function ReaderPage({ src, index, eager }: { src: string; index: number; 
               setAttempt((a) => a + 1);
               setState("loading");
             }}
-            className="rounded-full bg-accent px-4 py-2 font-semibold text-accent-fg"
+            className="press min-h-11 rounded-full bg-[var(--accent)] px-6 font-bold text-[var(--accent-fg)]"
           >
             Retry
           </button>

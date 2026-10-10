@@ -11,6 +11,7 @@ import { db } from "@/lib/db/schema";
 import { DEFAULT_SETTINGS } from "@/lib/db/types";
 import { neighbors } from "@/lib/source/chapters";
 import { ErrorState } from "@/components/ErrorState";
+import { Icon } from "@/components/icons";
 import { readHref, titleHref } from "@/components/TitleCard";
 import { ReaderOverlay } from "./ReaderOverlay";
 import { ReaderPage } from "./ReaderPage";
@@ -73,11 +74,15 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
 
   if (chapterQ.isError && chapterQ.error instanceof ApiError && (chapterQ.error.status === 404 || chapterQ.error.status === 400)) notFound();
   if (chapterQ.isError) {
-    return <ErrorState message={chapterQ.error.message} onRetry={() => chapterQ.refetch()} />;
+    return (
+      <div className="px-4 pt-[env(safe-area-inset-top)]">
+        <ErrorState message={chapterQ.error.message} onRetry={() => chapterQ.refetch()} />
+      </div>
+    );
   }
 
   return (
-    <div className="-mx-4 -mt-4 min-h-dvh bg-black">
+    <div className="min-h-dvh bg-black">
       <ReaderOverlay
         visible={overlay}
         progress={progress}
@@ -88,23 +93,47 @@ export function Reader({ titleId, chapterId }: { titleId: string; chapterId: str
         prev={prev}
         next={next}
       />
+      <h1 className="sr-only">{[t?.title, current?.name].filter(Boolean).join(", ") || "Reader"}</h1>
       <div onClick={onTap} className="mx-auto" style={{ maxWidth: `min(100%, ${settings.readerWidth}px)` }}>
         {chapterQ.isPending
-          ? Array.from({ length: 3 }, (_, i) => <div key={i} className="aspect-[2/3] w-full animate-pulse bg-card" />)
+          ? Array.from({ length: 3 }, (_, i) => (
+              <div key={i} role={i === 0 ? "status" : undefined} aria-label={i === 0 ? "Loading chapter" : undefined} className="flex aspect-[2/3] w-full items-center justify-center bg-neutral-950">
+                {i === 0 && <span aria-hidden className="h-7 w-7 animate-spin rounded-full border-2 border-white/10 border-t-[var(--accent)]" />}
+              </div>
+            ))
           : pages.map((src, i) => <ReaderPage key={src} src={src} index={i} eager={i < 3} />)}
       </div>
       {!chapterQ.isPending && (
-        <div className="mx-auto max-w-md px-4 py-10 text-center text-white">
-          {current?.group && <p className="text-sm text-neutral-400">Scanlated by {current.group}{titleId.startsWith("md:") ? " · via MangaDex" : ""}</p>}
+        <section aria-label="End of chapter" className="mx-auto max-w-md px-5 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-14 text-center text-white">
+          <p className="display text-[2.5rem] text-white">End of {current?.name ?? "chapter"}</p>
+          {current?.group && (
+            <p className="mt-2 text-sm text-neutral-400">
+              Scanlated by <span className="font-semibold text-neutral-200">{current.group}</span>
+              {titleId.startsWith("md:") ? " · via MangaDex" : ""}
+            </p>
+          )}
           {next ? (
-            <Link href={readHref(titleId, next.id)} className="mt-4 flex min-h-12 items-center justify-center rounded-full bg-accent font-semibold text-accent-fg">
+            <Link
+              href={readHref(titleId, next.id)}
+              className="press mt-7 flex min-h-14 items-center justify-center gap-2 rounded-full bg-[var(--accent)] px-6 text-base font-bold text-[var(--accent-fg)] shadow-[0_10px_40px_-10px_var(--accent)]"
+            >
               Next: {next.name}
+              <Icon name="forward" className="h-5 w-5" strokeWidth={2.4} />
             </Link>
           ) : (
-            <p className="mt-4 text-sm text-neutral-400">You&apos;re caught up.</p>
+            <div className="mt-7 rounded-2xl border border-white/10 bg-white/5 px-5 py-6">
+              <p className="text-lg font-bold text-white">You&apos;re caught up.</p>
+              <p className="mt-1 text-sm text-neutral-400">New chapters will show up on the title page and in your library.</p>
+            </div>
           )}
-          <Link href={titleHref(titleId)} className="mt-3 inline-block text-sm text-neutral-400 underline">Back to title</Link>
-        </div>
+          <Link
+            href={titleHref(titleId)}
+            className={`press mt-3 inline-flex min-h-11 items-center gap-1.5 rounded-full px-5 text-sm font-semibold hover:text-white ${next ? "text-neutral-300" : "mt-5 border border-white/20 text-white"}`}
+          >
+            <Icon name="back" className="h-4 w-4" />
+            Back to title
+          </Link>
+        </section>
       )}
     </div>
   );

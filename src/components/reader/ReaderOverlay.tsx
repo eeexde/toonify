@@ -3,6 +3,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Chapter } from "@/lib/source/types";
 import { readHref, titleHref } from "@/components/TitleCard";
+import { Icon } from "@/components/icons";
+
+const navBtn =
+  "press flex h-11 shrink-0 items-center gap-1 rounded-full px-3.5 text-sm font-bold text-fg hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-35";
 
 export function ReaderOverlay(p: {
   visible: boolean;
@@ -16,7 +20,11 @@ export function ReaderOverlay(p: {
 }) {
   const router = useRouter();
   const current = p.chapters.find((c) => c.id === p.chapterId);
-  const hide = p.visible ? "translate-y-0 opacity-100" : "pointer-events-none opacity-0";
+  const pct = Math.round(p.progress * 100);
+  // Enter eases out over 220ms; leaving is quicker so the strip is never waiting on chrome.
+  const motion = p.visible
+    ? "opacity-100 translate-y-0 duration-[220ms]"
+    : "pointer-events-none opacity-0 duration-150";
   return (
     <>
       <div
@@ -24,44 +32,61 @@ export function ReaderOverlay(p: {
         aria-label="Chapter progress"
         aria-valuemin={0}
         aria-valuemax={100}
-        aria-valuenow={Math.round(p.progress * 100)}
-        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-0.5"
+        aria-valuenow={pct}
+        className="pointer-events-none fixed inset-x-0 top-0 z-50 h-[3px] bg-white/10"
       >
-        <div className="h-full origin-left bg-accent" style={{ transform: `scaleX(${p.progress})` }} />
+        <div
+          className="h-full origin-left bg-accent shadow-[0_0_10px_var(--accent)] transition-transform duration-150 ease-linear"
+          style={{ transform: `scaleX(${p.progress})` }}
+        />
       </div>
-      <div className={`fixed inset-x-0 top-0 z-40 bg-bg/95 pt-[env(safe-area-inset-top)] backdrop-blur transition ${hide} ${p.visible ? "" : "-translate-y-full"}`}>
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-3 py-2">
-          <Link href={titleHref(p.titleId)} aria-label="Back to title" className="flex h-11 w-11 items-center justify-center text-xl">←</Link>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{p.title}</p>
-            <p className="truncate text-xs text-muted">{current?.name ?? ""}</p>
+
+      <div
+        className={`fixed inset-x-0 top-0 z-40 border-b border-line bg-chrome pt-[env(safe-area-inset-top)] backdrop-blur-xl transition ease-out-soft ${motion} ${
+          p.visible ? "" : "-translate-y-full"
+        }`}
+      >
+        <div className="mx-auto flex max-w-3xl items-center gap-1 px-2 py-1.5">
+          <Link
+            href={titleHref(p.titleId)}
+            aria-label="Back to title"
+            className="press flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-fg hover:bg-surface-2"
+          >
+            <Icon name="back" className="h-[22px] w-[22px]" strokeWidth={2.2} />
+          </Link>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-bold leading-tight">{p.title}</p>
+            <p className="truncate text-[13px] text-muted">{current?.name ?? ""}</p>
           </div>
+          <span className="shrink-0 px-3 text-sm font-bold tabular-nums text-accent-text" aria-hidden>
+            {pct}%
+          </span>
         </div>
       </div>
-      <div className={`fixed inset-x-0 bottom-0 z-40 bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur transition ${hide} ${p.visible ? "" : "translate-y-full"}`}>
-        <div className="mx-auto flex max-w-3xl items-center gap-2 px-3 py-2">
-          <button
-            disabled={!p.prev}
-            onClick={() => p.prev && router.push(readHref(p.titleId, p.prev.id))}
-            className="h-11 rounded-full px-4 text-sm disabled:opacity-30"
-          >
+
+      <div
+        className={`fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition ease-out-soft ${motion} ${
+          p.visible ? "" : "translate-y-[calc(100%+1rem)]"
+        }`}
+      >
+        <div className="mx-auto flex max-w-xl items-center gap-1 rounded-full border border-line bg-chrome p-1 shadow-card backdrop-blur-xl">
+          <button disabled={!p.prev} onClick={() => p.prev && router.push(readHref(p.titleId, p.prev.id))} className={navBtn}>
             ‹ Prev
           </button>
-          <select
-            aria-label="Chapter"
-            value={p.chapterId}
-            onChange={(e) => router.push(readHref(p.titleId, e.target.value))}
-            className="h-11 min-w-0 flex-1 rounded-full border border-line bg-card px-3 text-sm"
-          >
-            {p.chapters.filter((c) => !c.externalUrl).map((c) => (
-              <option key={c.id} value={c.id}>{c.group ? `${c.name} (${c.group})` : c.name}</option>
-            ))}
-          </select>
-          <button
-            disabled={!p.next}
-            onClick={() => p.next && router.push(readHref(p.titleId, p.next.id))}
-            className="h-11 rounded-full px-4 text-sm disabled:opacity-30"
-          >
+          <div className="relative min-w-0 flex-1">
+            <select
+              aria-label="Chapter"
+              value={p.chapterId}
+              onChange={(e) => router.push(readHref(p.titleId, e.target.value))}
+              className="h-11 w-full min-w-0 cursor-pointer appearance-none truncate rounded-full bg-surface-2 pl-4 pr-9 text-center text-sm font-semibold text-fg"
+            >
+              {p.chapters.filter((c) => !c.externalUrl).map((c) => (
+                <option key={c.id} value={c.id}>{c.group ? `${c.name} (${c.group})` : c.name}</option>
+              ))}
+            </select>
+            <Icon name="forward" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 rotate-90 text-muted" />
+          </div>
+          <button disabled={!p.next} onClick={() => p.next && router.push(readHref(p.titleId, p.next.id))} className={navBtn}>
             Next ›
           </button>
         </div>
