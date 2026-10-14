@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useBrowse, useTags } from "@/lib/query/hooks";
 import { browseHref, isSearching, readBrowse } from "@/lib/query/browse";
-import { hasFilters, type Filters } from "@/lib/source/filters";
+import { clearFilters, DEFAULT_KIND, effectiveKind, hasFilters, sourceSupportsKind, type Filters, type Kind } from "@/lib/source/filters";
 import { useHistory, useProgressMap, useSettings } from "@/lib/db/hooks";
 import { DEFAULT_SETTINGS, type HistoryItem } from "@/lib/db/types";
 import { readHref, TitleCard } from "@/components/TitleCard";
@@ -14,6 +14,7 @@ import { ErrorState } from "@/components/ErrorState";
 import { Footer } from "@/components/Footer";
 import { EmptyState, buttonSecondary } from "@/components/EmptyState";
 import { FilterBar } from "@/components/Filters";
+import { KindToggle } from "@/components/KindToggle";
 import { FeaturedBanner } from "@/components/FeaturedBanner";
 
 function ContinueCard({ h, lead }: { h: HistoryItem; lead: boolean }) {
@@ -78,6 +79,10 @@ function HomeInner() {
     if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
   const setFilters = (f: Filters) => router.replace(browseHref(state.q, f), { scroll: false });
+  const kind = effectiveKind(state.filters);
+  const setKind = (k: Kind) => setFilters({ ...state.filters, kind: k === DEFAULT_KIND ? undefined : k });
+  const other: Kind = kind === "manga" ? "manhwa" : "manga";
+  const kindAvailable = sourceSupportsKind(settings.source, kind);
 
   const seen = new Set<string>();
   const items = (q.data?.pages.flatMap((p) => p.items) ?? []).filter((it) => !seen.has(it.id) && !!seen.add(it.id));
@@ -87,7 +92,8 @@ function HomeInner() {
   return (
     <>
       <h1 className="sr-only">Home</h1>
-      {!browsing && <FeaturedBanner mature={settings.mature} source={settings.source} enabled={ready} />}
+      <KindToggle kind={kind} onChange={setKind} />
+      {!browsing && <FeaturedBanner mature={settings.mature} source={settings.source} kind={kind} enabled={ready} />}
       {!browsing && <ContinueRow />}
       <section aria-labelledby="latest-h">
         <div className="mb-3 flex items-baseline justify-between gap-3">
@@ -99,17 +105,41 @@ function HomeInner() {
         )}
         {!ready || q.isPending ? (
           <GridSkeleton />
+        ) : !kindAvailable ? (
+          <EmptyState
+            role="status"
+            icon="filter"
+            title="Manga isn't available on Toonily."
+            body="Switch source in Settings, or browse manhwa."
+            action={<Link href="/settings" className={buttonSecondary}>Open Settings</Link>}
+          />
         ) : q.isError && items.length === 0 ? (
           <ErrorState message={q.error.message} onRetry={() => q.refetch()} />
         ) : items.length === 0 ? (
           searching ? (
-            <EmptyState role="status" icon="search" title={`No results for “${term}”.`} body={filtered ? "Try removing a filter, or check the spelling." : "Check the spelling, or try a shorter part of the title."} />
+            <EmptyState
+              role="status"
+              icon="search"
+              title={`No results for “${term}”.`}
+              body={filtered ? "Try removing a filter, or check the spelling." : "Check the spelling, or try a shorter part of the title."}
+              action={
+                sourceSupportsKind(settings.source, other) ? (
+                  <button
+                    type="button"
+                    onClick={() => router.replace(browseHref(state.q, { ...state.filters, kind: other === DEFAULT_KIND ? undefined : other }), { scroll: false })}
+                    className={buttonSecondary}
+                  >
+                    Search {other} instead
+                  </button>
+                ) : undefined
+              }
+            />
           ) : (
             <EmptyState
               role="status"
               icon="filter"
               title="No titles match these filters."
-              action={<button type="button" onClick={() => setFilters({})} className={buttonSecondary}>Clear filters</button>}
+              action={<button type="button" onClick={() => setFilters(clearFilters(state.filters))} className={buttonSecondary}>Clear filters</button>}
             />
           )
         ) : (

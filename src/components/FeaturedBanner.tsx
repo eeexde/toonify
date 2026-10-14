@@ -6,6 +6,7 @@ import { useLibraryItem } from "@/lib/db/hooks";
 import { toggleLibrary } from "@/lib/db/actions";
 import { db } from "@/lib/db/schema";
 import type { SourceKey } from "@/lib/source/ids";
+import type { Kind } from "@/lib/source/filters";
 import type { FeaturedItem } from "@/lib/source/types";
 import { buttonPrimary } from "./EmptyState";
 import { Icon } from "./icons";
@@ -116,8 +117,8 @@ function Slide({ item, rank, active }: { item: FeaturedItem; rank: number; activ
   );
 }
 
-export function FeaturedBanner({ mature, source, enabled }: { mature: boolean; source: SourceKey; enabled: boolean }) {
-  const q = useFeatured(mature, source, enabled);
+export function FeaturedBanner({ mature, source, kind, enabled }: { mature: boolean; source: SourceKey; kind: Kind; enabled: boolean }) {
+  const q = useFeatured(mature, source, kind, enabled);
   const items = q.data ?? [];
   const [index, setIndex] = useState(0);
   const [hovered, setHovered] = useState(false);

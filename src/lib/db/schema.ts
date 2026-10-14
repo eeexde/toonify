@@ -1,12 +1,13 @@
 import Dexie, { type Table } from "dexie";
 import { indexedDB as memIDB, IDBKeyRange as memRange } from "fake-indexeddb";
-import type { HistoryItem, LibraryItem, ProgressItem, SettingRow } from "./types";
+import type { HistoryItem, LibraryItem, ProgressItem, SettingRow, TitlePref } from "./types";
 
 export class ToonifyDB extends Dexie {
   library!: Table<LibraryItem, string>;
   history!: Table<HistoryItem, string>;
   progress!: Table<ProgressItem, [string, string]>;
   settings!: Table<SettingRow, string>;
+  titlePrefs!: Table<TitlePref, string>;
 
   constructor(name: string, options?: ConstructorParameters<typeof Dexie>[1]) {
     super(name, options);
@@ -16,6 +17,7 @@ export class ToonifyDB extends Dexie {
       progress: "[titleId+chapterId], titleId, updatedAt",
       settings: "key",
     });
+    this.version(2).stores({ titlePrefs: "titleId" });
   }
 }
 

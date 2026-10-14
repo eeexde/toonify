@@ -1,4 +1,10 @@
+import type { ReaderMode } from "../reader/mode";
 import type { SourceKey } from "../source/ids";
+
+export interface TitlePref {
+  titleId: string;
+  mode: ReaderMode;
+}
 
 export interface LibraryItem {
   titleId: string;

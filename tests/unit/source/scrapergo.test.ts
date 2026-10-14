@@ -57,6 +57,7 @@ describe("ScraperGoSource", () => {
       altTitles: ["The Beginning After The End"],
     });
     expect(t.chapters.map((c) => c.id)).toEqual(["1", "2"]);
+    expect(t.layout).toBe("strip");
   });
 
   test("chapter", async () => {

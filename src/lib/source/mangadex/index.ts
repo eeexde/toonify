@@ -4,7 +4,7 @@ import { UpstreamError, InvalidIdError } from "../errors";
 import type { FetchJson } from "../http";
 import { encodeId } from "../ids";
 import { LIMITERS } from "../limiters";
-import { effectiveRatings, type SortKey, type Tag } from "../filters";
+import { effectiveKind, effectiveRatings, type Kind, type SortKey, type Tag } from "../filters";
 import type { ChapterPages, FeaturedItem, ListOpts, Page, Source, Title, TitleSummary } from "../types";
 import { toFeatured, toSummary, toTitle } from "./normalize";
 import { AtHomeSchema, FeedSchema, MangaEntitySchema, MangaListSchema, TagListSchema, type MdChapter } from "./schemas";
@@ -20,6 +20,7 @@ const ORDER: Record<SortKey, [string, "asc" | "desc"]> = {
   newest: ["createdAt", "desc"],
   title: ["title", "asc"],
 };
+const LANGUAGE: Record<Kind, string> = { manga: "ja", manhwa: "ko" };
 const FEED_LIMIT = 500;
 const MAX_FEED_PAGES = 10;
 
@@ -57,7 +58,7 @@ export class MangaDexSource implements Source {
 
   private listParams(page: number, opts: ListOpts, ratings: string[], hasQuery: boolean): URLSearchParams {
     const p = new URLSearchParams();
-    p.append("originalLanguage[]", "ko");
+    p.append("originalLanguage[]", LANGUAGE[effectiveKind(opts)]);
     p.append("availableTranslatedLanguage[]", "en");
     p.set("hasAvailableChapters", "true");
     p.append("includes[]", "cover_art");
@@ -93,9 +94,9 @@ export class MangaDexSource implements Source {
     return this.browse(q, page, opts);
   }
 
-  /** Featured = most followed Korean titles that got an update in the last FEATURED_DAYS days. */
-  async featured(opts: { mature: boolean; now?: () => number }): Promise<FeaturedItem[]> {
-    const p = this.listParams(1, { mature: opts.mature, sort: "follows" }, effectiveRatings(opts.mature), false);
+  /** Featured = most followed titles of the kind that got an update in the last FEATURED_DAYS days. */
+  async featured(opts: { mature: boolean; kind?: Kind; now?: () => number }): Promise<FeaturedItem[]> {
+    const p = this.listParams(1, { mature: opts.mature, kind: opts.kind, sort: "follows" }, effectiveRatings(opts.mature), false);
     p.set("limit", String(FEATURED_LIMIT));
     p.delete("offset");
     // Day-aligned so the upstream query (and any CDN in front of it) is stable for a whole day.

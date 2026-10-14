@@ -10,7 +10,7 @@ const display = Big_Shoulders({ subsets: ["latin"], variable: "--font-display-fa
 
 export const metadata: Metadata = {
   title: { default: "Toonify", template: "%s · Toonify" },
-  description: "A fast, mobile-first manhwa reader.",
+  description: "A fast, mobile-first manhwa & manga reader.",
   applicationName: "Toonify",
   appleWebApp: { capable: true, title: "Toonify", statusBarStyle: "black-translucent" },
 };

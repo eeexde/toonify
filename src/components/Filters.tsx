@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { effectiveRatings, hasFilters, RATINGS, type Filters, type Rating, type SortKey, type Tag } from "@/lib/source/filters";
+import { clearFilters, effectiveRatings, hasFilters, RATINGS, type Filters, type Rating, type SortKey, type Tag } from "@/lib/source/filters";
 import { Dropdown } from "./Dropdown";
 import { buttonPrimary } from "./EmptyState";
 import { Icon } from "./icons";
@@ -85,7 +85,7 @@ export function FilterBar({
           </button>
         ))}
         {hasFilters(filters) && (
-          <button type="button" onClick={() => onChange({})} className="press min-h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-muted hover:text-fg">
+          <button type="button" onClick={() => onChange(clearFilters(filters))} className="press min-h-9 shrink-0 rounded-full px-3 text-[13px] font-semibold text-muted hover:text-fg">
             Clear all
           </button>
         )}
@@ -213,7 +213,7 @@ function FilterSheet({
           ))}
         </div>
         <div className="flex items-center gap-2 border-t border-line px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-          <button type="button" onClick={() => setDraft({})} className="press min-h-11 rounded-full px-4 text-sm font-semibold text-fg hover:bg-surface-2">
+          <button type="button" onClick={() => setDraft(clearFilters(initial))} className="press min-h-11 rounded-full px-4 text-sm font-semibold text-fg hover:bg-surface-2">
             Reset
           </button>
           <button type="button" onClick={() => onApply(draft)} className={`${buttonPrimary} ml-auto`}>

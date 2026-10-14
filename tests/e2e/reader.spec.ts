@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("browse, open title, read, resume, complete", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   await expect(page.getByTestId("title-card")).toHaveCount(2);
   await page.getByTestId("title-card").filter({ hasText: "Skyward Blade" }).click();
   await expect(page.getByRole("heading", { name: "Skyward Blade" })).toBeVisible();
@@ -16,7 +16,7 @@ test("browse, open title, read, resume, complete", async ({ page }) => {
   // Scroll to page 3, leave, come back -> resumes there
   await page.locator('[data-page-index="2"]').scrollIntoViewIfNeeded();
   await page.waitForTimeout(2500);
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   await expect(page.getByText("Continue reading")).toBeVisible();
   await page.getByRole("link", { name: /Skyward Blade/ }).first().click();
   await expect(page.locator('[data-page-index="2"]')).toBeInViewport();
@@ -35,11 +35,11 @@ test("last readable chapter disables next (external skipped)", async ({ page }) 
 
 test("search from the header turns home into results", async ({ page }) => {
   await page.goto("/library");
-  await page.getByLabel("Search manhwa").fill("bak");
-  await expect(page).toHaveURL(/\/\?q=bak$/);
+  await page.getByLabel("Search titles").fill("lan");
+  await expect(page).toHaveURL(/\/\?q=lan$/);
   await expect(page.getByTestId("title-card")).toHaveCount(1);
-  await expect(page.getByText("Moonlit Bakery")).toBeVisible();
-  await page.getByLabel("Search manhwa").fill("zzzz");
+  await expect(page.getByText("Paper Lantern")).toBeVisible();
+  await page.getByLabel("Search titles").fill("zzzz");
   await expect(page.getByText(/No results/)).toBeVisible();
   await page.getByRole("button", { name: "Clear search" }).click();
   await expect(page).toHaveURL(/\/$/);
@@ -49,11 +49,11 @@ test("search from the header turns home into results", async ({ page }) => {
 test("old /search links redirect to home", async ({ page }) => {
   await page.goto("/search?q=moon");
   await expect(page).toHaveURL(/\/\?q=moon$/);
-  await expect(page.getByLabel("Search manhwa")).toHaveValue("moon");
+  await expect(page.getByLabel("Search titles")).toHaveValue("moon");
 });
 
 test("filters: genre and sort apply to browse; cards show series status", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   await expect(page.getByTestId("title-card")).toHaveCount(2);
   await expect(page.getByTestId("title-card").filter({ hasText: "Moonlit Bakery" }).getByText("Completed")).toBeVisible();
   await expect(page.getByTestId("title-card").filter({ hasText: "Skyward Blade" }).getByText("Ongoing")).toBeVisible();
@@ -125,7 +125,7 @@ test("branded dropdown: reader chapter picker by mouse and keyboard", async ({ p
 });
 
 test("featured banner: slides, list, pause, view series; hidden while searching", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   const banner = page.getByRole("region", { name: "Featured" });
   await expect(banner.getByRole("heading", { name: "Featured" })).toBeVisible();
   const slide = (name: string) => banner.getByRole("group", { name: new RegExp(`featured: ${name}$`), includeHidden: true });
@@ -148,13 +148,13 @@ test("featured banner: slides, list, pause, view series; hidden while searching"
   await expect(page.getByRole("heading", { name: "Skyward Blade" })).toBeVisible();
   await expect(page.getByRole("button", { name: "✓ In library" })).toBeVisible();
 
-  await page.goto("/?q=bak");
+  await page.goto("/?q=bak&kind=manhwa");
   await expect(page.getByTestId("title-card")).toHaveCount(1);
   await expect(page.getByRole("region", { name: "Featured" })).toHaveCount(0);
 });
 
 test("featured banner autoplays to the next slide", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/?kind=manhwa");
   const banner = page.getByRole("region", { name: "Featured" });
   await expect(banner.getByRole("group", { name: /featured: Skyward Blade$/, includeHidden: true })).toHaveAttribute("aria-hidden", "false");
   await page.mouse.move(5, 830);

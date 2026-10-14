@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, test } from "vitest";
 import { createDb, type ToonifyDB } from "@/lib/db/schema";
-import { markCompleted, readSettings, recordOpen, saveProgress, setSetting, toggleLibrary, touchLatestChapter } from "@/lib/db/actions";
+import { markCompleted, readSettings, recordOpen, saveProgress, setReaderMode, setSetting, toggleLibrary, touchLatestChapter } from "@/lib/db/actions";
 
 let d: ToonifyDB;
 beforeEach(async () => { d = createDb(`t-${Math.random()}`); await d.open(); });
@@ -49,5 +49,13 @@ describe("db actions", () => {
     expect((await readSettings(d)).theme).toBe("dark");
     await setSetting(d, "mature", true);
     expect((await readSettings(d)).mature).toBe(true);
+  });
+});
+
+describe("setReaderMode", () => {
+  test("stores and replaces the per-title mode", async () => {
+    await setReaderMode(d, "md:a", "paged-ltr");
+    await setReaderMode(d, "md:a", "strip");
+    expect(await d.titlePrefs.get("md:a")).toEqual({ titleId: "md:a", mode: "strip" });
   });
 });

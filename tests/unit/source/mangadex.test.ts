@@ -15,6 +15,7 @@ const manga = (over: Record<string, unknown> = {}) => ({
     description: { en: "Hunters." },
     status: "completed",
     contentRating: "safe",
+    originalLanguage: "ko",
     tags: [
       { attributes: { name: { en: "Action" }, group: "genre" } },
       { attributes: { name: { en: "Monsters" }, group: "theme" } },
@@ -55,7 +56,7 @@ function source(routes: Record<string, unknown>) {
 describe("MangaDexSource", () => {
   test("home maps list and builds query", async () => {
     const { src, calls } = source({ "/manga?": { result: "ok", data: [manga()], limit: 24, offset: 0, total: 30 } });
-    const page = await src.home(1, { mature: false });
+    const page = await src.home(1, { mature: false, kind: "manhwa" });
     expect(page).toEqual({
       page: 1, hasMore: true,
       items: [{ id: `md:${MID}`, title: "Solo Leveling", cover: `/api/img/cover/${MID}/cover.jpg.512.jpg`, badge: undefined, status: "completed" }],
@@ -203,6 +204,28 @@ describe("MangaDexSource", () => {
       id: `md:${MID}`, title: "Solo Leveling", cover: `/api/img/cover/${MID}/cover.jpg.512.jpg`, badge: undefined,
       status: "completed", summary: "Hunters.", genres: ["Action"],
     }]);
+  });
+
+  test("language follows kind: manga (default) -> ja, manhwa -> ko", async () => {
+    const { src, calls } = source({ "/manga?": { result: "ok", data: [], limit: 24, offset: 0, total: 0 } });
+    await src.home(1, { mature: false });
+    await src.search("x", 1, { mature: false, kind: "manhwa" });
+    await src.featured({ mature: false, kind: "manga" });
+    expect(calls.map((c) => new URL(c).searchParams.getAll("originalLanguage[]"))).toEqual([["ja"], ["ko"], ["ja"]]);
+  });
+
+  test("layout: ko strip, ja paged, ja with Long Strip tag strip", async () => {
+    const longStrip = { attributes: { name: { en: "Long Strip" }, group: "format" } };
+    const feed = { result: "ok", data: [], limit: 500, offset: 0, total: 0 };
+    const cases: [Record<string, unknown>, string][] = [
+      [{}, "strip"],
+      [{ originalLanguage: "ja" }, "paged"],
+      [{ originalLanguage: "ja", tags: [longStrip] }, "strip"],
+    ];
+    for (const [over, layout] of cases) {
+      const { src } = source({ [`/manga/${MID}?`]: { result: "ok", data: manga(over) }, "/feed?": feed });
+      expect((await src.title(MID)).layout).toBe(layout);
+    }
   });
 
   test("featured synopsis: first paragraph, markdown links unwrapped, clipped on a word", async () => {

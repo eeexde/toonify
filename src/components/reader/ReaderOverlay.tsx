@@ -5,6 +5,13 @@ import type { Chapter } from "@/lib/source/types";
 import { readHref, titleHref } from "@/components/TitleCard";
 import { Dropdown } from "@/components/Dropdown";
 import { Icon } from "@/components/icons";
+import { READER_MODES, type ReaderMode } from "@/lib/reader/mode";
+
+const MODE_LABEL: Record<ReaderMode, string> = {
+  strip: "Long strip",
+  "paged-rtl": "Paged, right to left",
+  "paged-ltr": "Paged, left to right",
+};
 
 const navBtn =
   "press flex h-11 shrink-0 items-center gap-1 rounded-full px-3.5 text-sm font-bold text-fg hover:bg-surface-2 disabled:pointer-events-none disabled:opacity-35";
@@ -18,6 +25,8 @@ export function ReaderOverlay(p: {
   chapters: Chapter[];
   prev?: Chapter;
   next?: Chapter;
+  mode: ReaderMode;
+  onModeChange: (m: ReaderMode) => void;
 }) {
   const router = useRouter();
   const current = p.chapters.find((c) => c.id === p.chapterId);
@@ -59,6 +68,15 @@ export function ReaderOverlay(p: {
             <p className="truncate text-[15px] font-bold leading-tight">{p.title}</p>
             <p className="truncate text-[13px] text-muted">{current?.name ?? ""}</p>
           </div>
+          <Dropdown
+            label="Reading mode"
+            value={p.mode}
+            options={READER_MODES.map((m) => ({ value: m, label: MODE_LABEL[m] }))}
+            onChange={p.onModeChange}
+            align="end"
+            className="shrink-0"
+            triggerClassName="h-11 rounded-full px-3 text-[13px] font-semibold text-fg hover:bg-surface-2"
+          />
           <span className="shrink-0 px-3 text-sm font-bold tabular-nums text-accent-text" aria-hidden>
             {pct}%
           </span>

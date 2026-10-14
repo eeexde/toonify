@@ -12,6 +12,8 @@ interface Args {
   onComplete: () => boolean;
   onScrollDown: () => void;
   onProgress?: (ratio: number) => void;
+  /** The page at the top of the screen, reported as the reader scrolls. */
+  onPage?: (index: number) => void;
 }
 
 const PIN_MS = 8_000;
@@ -20,9 +22,9 @@ function pageTops(): number[] {
   return Array.from(document.querySelectorAll<HTMLElement>("[data-page-index]")).map((el) => el.getBoundingClientRect().top);
 }
 
-export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, onComplete, onScrollDown, onProgress }: Args) {
-  const cb = useRef({ onPrefetch, onComplete, onScrollDown, onProgress });
-  cb.current = { onPrefetch, onComplete, onScrollDown, onProgress };
+export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, onComplete, onScrollDown, onProgress, onPage }: Args) {
+  const cb = useRef({ onPrefetch, onComplete, onScrollDown, onProgress, onPage });
+  cb.current = { onPrefetch, onComplete, onScrollDown, onProgress, onPage };
 
   // Restore saved position once pages are rendered. Pages above the target start as fixed-ratio
   // placeholders and change height as their images load; browsers without scroll anchoring
@@ -84,6 +86,7 @@ export function useReaderTracking({ titleId, chapterId, pageCount, onPrefetch, o
         raf = 0;
         tracker.update();
         cb.current.onProgress?.(tracker.snapshot.ratio);
+        cb.current.onPage?.(tracker.snapshot.pageIndex);
       });
     };
     const save = () => tracker.save();

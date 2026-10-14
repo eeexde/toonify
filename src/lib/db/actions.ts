@@ -1,5 +1,10 @@
+import type { ReaderMode } from "../reader/mode";
 import type { ToonifyDB } from "./schema";
 import { DEFAULT_SETTINGS, type HistoryItem, type ProgressItem, type Settings } from "./types";
+
+export async function setReaderMode(d: ToonifyDB, titleId: string, mode: ReaderMode) {
+  await d.titlePrefs.put({ titleId, mode });
+}
 
 export async function toggleLibrary(d: ToonifyDB, item: { titleId: string; title: string; cover: string }): Promise<boolean> {
   return d.transaction("rw", d.library, async () => {

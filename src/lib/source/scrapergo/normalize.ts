@@ -44,6 +44,7 @@ export function toTitle(rawId: string, body: z.infer<typeof DetailSchema>): Titl
     authors: asList(info.Author),
     artists: asList(info.Artist),
     genres: asList(info.Genre),
+    layout: "strip",
     chapters: sortChapters(chapters),
   };
 }

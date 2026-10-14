@@ -16,6 +16,7 @@ export const MangaSchema = z.object({
     description: Loc,
     status: z.string().nullable(),
     contentRating: z.string(),
+    originalLanguage: z.string().nullish(),
     tags: z.array(z.object({ attributes: z.object({ name: Loc, group: z.string() }) })),
   }),
   relationships: z.array(Relationship),

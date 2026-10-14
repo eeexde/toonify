@@ -2,7 +2,7 @@ import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, test } from "vitest";
 import { createDb, type ToonifyDB } from "@/lib/db/schema";
 import { exportData, importData, ImportError } from "@/lib/db/backup";
-import { recordOpen, setSetting, toggleLibrary } from "@/lib/db/actions";
+import { recordOpen, setReaderMode, setSetting, toggleLibrary } from "@/lib/db/actions";
 
 let d: ToonifyDB;
 beforeEach(async () => { d = createDb(`b-${Math.random()}`); await d.open(); });
@@ -26,6 +26,25 @@ describe("backup", () => {
     dump.history[0] = { ...dump.history[0], chapterId: "c1", readAt: 1 };
     await importData(d, dump);
     expect((await d.history.get("md:a"))?.chapterId).toBe("c5");
+  });
+
+  test("title prefs round trip; backups without them still import", async () => {
+    await setReaderMode(d, "md:a", "paged-ltr");
+    const dump = await exportData(d);
+    expect(dump.titlePrefs).toEqual([{ titleId: "md:a", mode: "paged-ltr" }]);
+    const d2 = createDb(`b3-${Math.random()}`);
+    await d2.open();
+    await importData(d2, JSON.parse(JSON.stringify(dump)));
+    expect(await d2.titlePrefs.get("md:a")).toEqual({ titleId: "md:a", mode: "paged-ltr" });
+    const { titlePrefs: _omit, ...old } = dump;
+    await expect(importData(d2, old)).resolves.toBeTruthy();
+  });
+
+  test("drops unknown reader modes but imports the rest", async () => {
+    const input = { version: 1, exportedAt: 1, library: [], history: [], progress: [], settings: [], titlePrefs: [{ titleId: "t", mode: "sideways" }, { titleId: "u", mode: "paged-ltr" }] };
+    await importData(d, input);
+    expect(await d.titlePrefs.get("t")).toBeUndefined();
+    expect(await d.titlePrefs.get("u")).toEqual({ titleId: "u", mode: "paged-ltr" });
   });
 
   test.each([

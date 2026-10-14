@@ -59,8 +59,8 @@ export function HeaderSearch() {
         type="search"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Search manhwa"
-        aria-label="Search manhwa"
+        placeholder="Search titles"
+        aria-label="Search titles"
         maxLength={100}
         enterKeyHint="search"
         autoComplete="off"

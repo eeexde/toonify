@@ -74,3 +74,18 @@ export function createTracker(d: TrackerDeps) {
     },
   };
 }
+
+/** Tracker `y` step per page, comfortably above createTracker's 10px "scrolled down" threshold. */
+const PAGE_STEP_Y = 1000;
+
+/** Measurement for the paged reader. `index === pageCount` is the end card. */
+export function pagedMeasure(index: number, pageCount: number): Measure {
+  if (pageCount <= 0) return { y: 0, pageIndex: 0, ratio: 0 };
+  return { y: index * PAGE_STEP_Y, pageIndex: Math.min(index, pageCount - 1), ratio: Math.min(1, (index + 1) / pageCount) };
+}
+
+/** A saved page index clipped to the chapter (it may come from an older, longer upload). */
+export function clampRestore(saved: number | undefined, pageCount: number): number {
+  if (!saved || pageCount <= 0) return 0;
+  return Math.min(Math.max(0, saved), pageCount - 1);
+}

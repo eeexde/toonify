@@ -11,6 +11,9 @@ export const useLibrary = () => useLiveQuery(() => db.library.orderBy("addedAt")
 export const useLibraryItem = (titleId: string) =>
   useLiveQuery(async () => (await db.library.get(titleId)) ?? null, [titleId]);
 
+export const useTitlePref = (titleId: string) =>
+  useLiveQuery(async () => (await db.titlePrefs.get(titleId)) ?? null, [titleId]);
+
 export const useHistory = () => useLiveQuery(() => db.history.orderBy("readAt").reverse().toArray(), []);
 
 export const useHistoryItem = (titleId: string) =>
