@@ -12,6 +12,17 @@ interface Deps {
   atHome: (chapterId: string, failedBaseUrl?: string) => Promise<AtHome>;
   fetch?: typeof fetch;
   mockEnabled: boolean;
+  /** Called after each MangaDex@Home node fetch, so the node network can be told how it did. */
+  report?: (r: NodeReport) => void;
+}
+
+/** Body of a MangaDex@Home report: https://api.mangadex.org/docs/04-chapter/retrieving-chapter/ */
+export interface NodeReport {
+  url: string;
+  success: boolean;
+  bytes: number;
+  duration: number;
+  cached: boolean;
 }
 
 const IMAGE_TYPE = /^image\/(jpeg|png|webp|gif|avif)\b/i;
@@ -22,16 +33,31 @@ const notFound = () => new Response("Not found", { status: 404 });
 const NODE_TIMEOUT_MS = 5_000;
 const UPLOADS_TIMEOUT_MS = 10_000;
 
-async function tryFetch(url: string, doFetch: typeof fetch, timeoutMs = UPLOADS_TIMEOUT_MS): Promise<Response | null> {
+async function tryFetch(
+  url: string,
+  doFetch: typeof fetch,
+  timeoutMs = UPLOADS_TIMEOUT_MS,
+  report?: (r: NodeReport) => void,
+): Promise<Response | null> {
   if (!isAllowedImageHost(url)) return null;
+  const start = Date.now();
+  let res: Response | undefined;
+  let good = false;
   try {
-    const res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
-    if (res.ok && res.body && IMAGE_TYPE.test(res.headers.get("Content-Type") ?? "")) return res;
-    await res.body?.cancel().catch(() => {});
-    return null;
+    res = await doFetch(url, { headers: { "User-Agent": userAgent() }, signal: AbortSignal.timeout(timeoutMs), redirect: "error" });
+    good = res.ok && !!res.body && IMAGE_TYPE.test(res.headers.get("Content-Type") ?? "");
+    if (!good) await res.body?.cancel().catch(() => {});
   } catch {
-    return null;
+    good = false;
   }
+  report?.({
+    url,
+    success: good,
+    bytes: good ? Number(res?.headers.get("Content-Length")) || 0 : 0,
+    duration: Date.now() - start,
+    cached: (res?.headers.get("X-Cache") ?? "").startsWith("HIT"),
+  });
+  return good ? res! : null;
 }
 
 function pass(res: Response): Response {
@@ -69,13 +95,17 @@ export async function proxyImage(t: ImgTarget, deps: Deps): Promise<Response> {
     return new Response("Source unavailable", { status: 502 });
   }
   if (!ah.files.includes(t.file)) return notFound();
+  // MangaDex asks for reports from @Home nodes only, never from uploads.mangadex.org.
+  const nodeReport = (r: NodeReport) => {
+    if (new URL(r.url).hostname.endsWith(".mangadex.network")) deps.report?.(r);
+  };
 
-  let res = await tryFetch(`${ah.baseUrl}/data/${ah.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS);
+  let res = await tryFetch(`${ah.baseUrl}/data/${ah.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS, nodeReport);
   if (!res) {
     try {
       const fresh = await deps.atHome(t.chapterId, ah.baseUrl);
       if (fresh.baseUrl !== ah.baseUrl) {
-        res = await tryFetch(`${fresh.baseUrl}/data/${fresh.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS);
+        res = await tryFetch(`${fresh.baseUrl}/data/${fresh.hash}/${t.file}`, doFetch, NODE_TIMEOUT_MS, nodeReport);
       }
     } catch {
       res = null;

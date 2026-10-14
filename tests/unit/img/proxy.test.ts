@@ -105,3 +105,36 @@ describe("proxyImage", () => {
     expect(res.headers.get("Content-Type")).toBe("image/svg+xml");
   });
 });
+
+describe("proxyImage @Home reports", () => {
+  const atHomeOk = { baseUrl: "https://abc.mangadex.network", hash: "h1", files: ["1-a.jpg"] };
+  const target = { kind: "md" as const, chapterId: CID, file: "1-a.jpg" };
+
+  test("reports a node success with bytes and cache state", async () => {
+    const fetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([1, 2, 3]), { status: 200, headers: { "Content-Type": "image/jpeg", "Content-Length": "3", "X-Cache": "HIT from node" } }),
+    );
+    const report = vi.fn();
+    await proxyImage(target, { atHome: async () => atHomeOk, fetch, mockEnabled: false, report });
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls[0][0]).toMatchObject({ url: "https://abc.mangadex.network/data/h1/1-a.jpg", success: true, bytes: 3, cached: true });
+  });
+
+  test("reports a node failure but never the uploads fallback", async () => {
+    const fetch = vi.fn()
+      .mockResolvedValueOnce(new Response("x", { status: 500 }))
+      .mockResolvedValueOnce(new Response(new Uint8Array([1]), { status: 200, headers: { "Content-Type": "image/jpeg" } }));
+    const report = vi.fn();
+    const res = await proxyImage(target, { atHome: async () => atHomeOk, fetch, mockEnabled: false, report });
+    expect(res.status).toBe(200);
+    expect(report).toHaveBeenCalledTimes(1);
+    expect(report.mock.calls[0][0]).toMatchObject({ success: false, bytes: 0, cached: false });
+  });
+
+  test("covers are never reported", async () => {
+    const fetch = vi.fn().mockResolvedValue(new Response(new Uint8Array([1]), { status: 200, headers: { "Content-Type": "image/jpeg" } }));
+    const report = vi.fn();
+    await proxyImage({ kind: "cover", mangaId: CID, file: "f.jpg" }, { atHome: async () => atHomeOk, fetch, mockEnabled: false, report });
+    expect(report).not.toHaveBeenCalled();
+  });
+});

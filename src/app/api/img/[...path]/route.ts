@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { parseImgPath } from "@/lib/img/paths";
-import { proxyImage } from "@/lib/img/proxy";
+import { defer } from "@/lib/api/defer";
+import { proxyImage, type NodeReport } from "@/lib/img/proxy";
+import { userAgent } from "@/lib/source/http";
 import { getSourceService } from "@/lib/source/service-instance";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
@@ -17,5 +19,17 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ pat
   return proxyImage(target, {
     atHome: (chapterId, failedBaseUrl) => service.mdAtHome(chapterId, failedBaseUrl),
     mockEnabled: process.env.SOURCE_MODE === "mock",
+    report,
   });
+}
+
+function report(r: NodeReport) {
+  defer(
+    fetch("https://api.mangadex.network/report", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": userAgent() },
+      body: JSON.stringify(r),
+      signal: AbortSignal.timeout(5_000),
+    }).catch(() => {}),
+  );
 }
