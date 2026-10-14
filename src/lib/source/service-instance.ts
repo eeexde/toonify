@@ -9,6 +9,10 @@ import { SourceService } from "./service";
 
 let service: SourceService | undefined;
 
+export function scraperGoEnabled(): boolean {
+  return process.env.SOURCE_SCRAPERGO === "1";
+}
+
 export function getSourceService(): SourceService {
   if (service) return service;
   const cache = createCache(getCacheStore(), { defer });
@@ -17,7 +21,11 @@ export function getSourceService(): SourceService {
   } else {
     const fetchJson = createFetchJson({ headers: { "User-Agent": userAgent() } });
     service = new SourceService({
-      sources: { md: new MangaDexSource({ fetchJson }), sg: new ScraperGoSource({ fetchJson }) },
+      sources: {
+        md: new MangaDexSource({ fetchJson }),
+        // Opt-in only: ScraperGo mirrors a third-party site, so public deploys leave it off.
+        ...(scraperGoEnabled() ? { sg: new ScraperGoSource({ fetchJson }) } : {}),
+      },
       cache,
       defaultSource: "md",
     });
