@@ -1,6 +1,6 @@
 # Toonify
 
-Mobile-first manhwa & manga reader (installable PWA). Data from [MangaDex](https://mangadex.org) with an optional ScraperGo (Toonily) source for manhwa.
+Mobile-first manhwa & manga reader (installable PWA). Data from [MangaDex](https://mangadex.org), with an opt-in ScraperGo (Toonily) source for manhwa.
 
 ## Run
 
@@ -18,6 +18,7 @@ Mobile-first manhwa & manga reader (installable PWA). Data from [MangaDex](https
 | Var | Purpose |
 |---|---|
 | SOURCE_MODE | `live` (default) or `mock` |
+| SOURCE_SCRAPERGO | `1` enables the ScraperGo (Toonily) source. Off by default; keep it off on public deploys. |
 | APP_URL | Public URL, sent in the MangaDex User-Agent |
 | UPSTASH_REDIS_REST_URL / _TOKEN | Shared server cache (recommended on Vercel). Falls back to in-memory. |
 
