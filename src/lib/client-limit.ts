@@ -1,4 +1,5 @@
-import { Redis } from "@upstash/redis";
+// The cloudflare build is the fetch-only client; the default one touches Node APIs the Edge middleware lacks.
+import { Redis } from "@upstash/redis/cloudflare";
 
 /** Fixed-window per-client limits. Images get more room: a chapter alone is dozens of requests. */
 export const CLIENT_LIMITS = {
