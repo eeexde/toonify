@@ -2,12 +2,11 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { db } from "@/lib/db/schema";
 import { keyAction, swipeAction, tapAction, type PagedMode, type PageStep } from "@/lib/reader/mode";
+import { createPreloader, preloadIndexes } from "@/lib/reader/preload";
 import { clampRestore } from "@/lib/reader/progress";
 import { ReaderPage } from "./ReaderPage";
 import type { ReaderCallbacks } from "./StripView";
 import { usePagedTracking } from "./usePagedTracking";
-
-const PRELOAD = [1, 2, -1, -2];
 
 const zoomed = () => typeof window !== "undefined" && !!window.visualViewport && window.visualViewport.scale > 1.01;
 
@@ -78,12 +77,12 @@ export function PagedView({
     return () => window.removeEventListener("keydown", onKey);
   }, [mode, go]);
 
+  const preloader = useRef<ReturnType<typeof createPreloader> | null>(null);
   useEffect(() => {
-    for (const d of PRELOAD) {
-      const src = pages[index + d];
-      if (src) new Image().src = src;
-    }
-  }, [index, pages]);
+    preloader.current ??= createPreloader();
+    preloader.current.set(preloadIndexes(index, count).map((i) => pages[i]));
+  }, [index, count, pages]);
+  useEffect(() => () => preloader.current?.clear(), []);
 
   if (pending || (count > 0 && !restored)) {
     return (

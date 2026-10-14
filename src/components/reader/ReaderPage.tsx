@@ -1,10 +1,17 @@
 "use client";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 export function ReaderPage({ src, index, eager, fit = false }: { src: string; index: number; eager: boolean; fit?: boolean }) {
   const [state, setState] = useState<"loading" | "ok" | "error">("loading");
   const [attempt, setAttempt] = useState(0);
   const url = attempt === 0 ? src : `${src}${src.includes("?") ? "&" : "?"}retry=${attempt}`;
+  const img = useRef<HTMLImageElement>(null);
+
+  // A preloaded page is already complete when it mounts; show it before the first paint.
+  useLayoutEffect(() => {
+    const el = img.current;
+    if (el?.complete && el.naturalWidth > 0) setState("ok");
+  }, [url]);
   return (
     <div
       data-page-index={index}
@@ -12,6 +19,7 @@ export function ReaderPage({ src, index, eager, fit = false }: { src: string; in
     >
       {state !== "error" && (
         <img
+          ref={img}
           key={url}
           src={url}
           alt={`Page ${index + 1}`}

@@ -1,5 +1,6 @@
 "use client";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { PRELOAD_AHEAD } from "@/lib/reader/preload";
 import { ReaderPage } from "./ReaderPage";
 import { useReaderTracking } from "./useReaderTracking";
 
@@ -30,7 +31,9 @@ export function StripView({
   callbacks: ReaderCallbacks;
   endCard: ReactNode;
 }) {
-  useReaderTracking({ titleId, chapterId, pageCount: pages.length, ...callbacks });
+  // Pages up to PRELOAD_AHEAD below the one on screen load eagerly; the rest stay lazy.
+  const [current, setCurrent] = useState(0);
+  useReaderTracking({ titleId, chapterId, pageCount: pages.length, ...callbacks, onPage: setCurrent });
 
   const onTap = (e: React.MouseEvent) => {
     const w = window.innerWidth;
@@ -46,7 +49,7 @@ export function StripView({
                 {i === 0 && <span aria-hidden className="h-7 w-7 animate-spin rounded-full border-2 border-white/10 border-t-[var(--accent)]" />}
               </div>
             ))
-          : pages.map((src, i) => <ReaderPage key={src} src={src} index={i} eager={i < 3} />)}
+          : pages.map((src, i) => <ReaderPage key={src} src={src} index={i} eager={i <= current + PRELOAD_AHEAD} />)}
       </div>
       {!pending && endCard}
     </>
